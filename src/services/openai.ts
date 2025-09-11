@@ -19,8 +19,8 @@ class OpenAIService {
   private baseURL: string = 'https://api.openai.com/v1';
 
   constructor(apiKey?: string) {
-    // TODO: Configurar chave da API via Supabase secrets
-    this.apiKey = apiKey || process.env.OPENAI_API_KEY || '';
+    // TODO: Configurar chave da API via Supabase secrets (frontend não deve acessar variáveis de ambiente)
+    this.apiKey = apiKey || '';
   }
 
   async chatCompletion(
