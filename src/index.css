@@ -2,41 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Apolar Imóveis Design System - Cores oficiais da empresa */
 
 @layer base {
   :root {
+    /* Cores principais da Apolar */
+    --apolar-blue: 235 63% 31%; /* #312C73 - Azul Noite */
+    --apolar-gold: 50 100% 50%; /* #FFCC00 - Amarelo Ouro */
+    --apolar-red: 351 87% 46%; /* #D90F17 - Vermelho Escarlate */
+    
+    /* Neutros da Apolar */
+    --apolar-light-gray: 0 0% 93%; /* #ECEDED */
+    --apolar-dark-gray: 0 0% 33%; /* #545454 */
+    --apolar-black: 0 0% 0%; /* #000000 */
+
+    /* Sistema base usando cores da Apolar */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 235 63% 31%; /* Azul Apolar */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 93%; /* Cinza claro Apolar */
+    --secondary-foreground: 0 0% 33%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 33%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 50 100% 50%; /* Amarelo Apolar */
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 351 87% 46%; /* Vermelho Apolar */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 235 63% 31%;
 
     --radius: 0.5rem;
+
+    /* Chat específico - animações e sombras */
+    --chat-shadow: 0 10px 30px -5px hsl(var(--apolar-blue) / 0.3);
+    --chat-glow: 0 0 20px hsl(var(--apolar-gold) / 0.4);
+    
+    /* Gradientes da Apolar */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--apolar-blue)), hsl(var(--apolar-blue) / 0.8));
+    --gradient-accent: linear-gradient(45deg, hsl(var(--apolar-gold)), hsl(var(--apolar-gold) / 0.9));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--apolar-blue)), hsl(var(--apolar-gold) / 0.2));
 
     --sidebar-background: 0 0% 98%;
 
@@ -101,5 +119,65 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Animações específicas para o chat Apolar */
+@layer utilities {
+  .chat-bubble-enter {
+    animation: bubbleSlideUp 0.3s ease-out;
+  }
+  
+  .chat-bubble-exit {
+    animation: bubbleSlideDown 0.3s ease-out;
+  }
+  
+  .chat-window-enter {
+    animation: windowFadeIn 0.4s ease-out;
+  }
+  
+  .chat-glow {
+    box-shadow: var(--chat-glow);
+  }
+  
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  @keyframes bubbleSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes bubbleSlideDown {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(20px) scale(0.8);
+    }
+  }
+
+  @keyframes windowFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 }

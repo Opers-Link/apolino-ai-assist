@@ -19,6 +19,17 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        
+        /* Cores específicas da Apolar */
+        apolar: {
+          blue: "hsl(var(--apolar-blue))",
+          gold: "hsl(var(--apolar-gold))",
+          red: "hsl(var(--apolar-red))",
+          "light-gray": "hsl(var(--apolar-light-gray))",
+          "dark-gray": "hsl(var(--apolar-dark-gray))",
+          black: "hsl(var(--apolar-black))"
+        },
+        
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
