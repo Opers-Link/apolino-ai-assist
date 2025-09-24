@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import OpenAIService from '@/services/openai';
+import { supabase } from '@/integrations/supabase/client';
 import apolinoAi from '@/assets/apolino-ai.png';
 import apolarLogo from '@/assets/apolar-logo.png';
 
@@ -28,6 +29,8 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [conversationId, setConversationId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -35,6 +38,88 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
   const openaiService = new OpenAIService();
 
   const MAX_MESSAGES = 30;
+
+  // Gerar ID único da sessão e criar conversa no Supabase
+  useEffect(() => {
+    if (isOpen && !sessionId) {
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setSessionId(newSessionId);
+      createConversation(newSessionId);
+    }
+  }, [isOpen, sessionId]);
+
+  // Criar conversa no Supabase
+  const createConversation = async (sessionId: string) => {
+    try {
+      const userAgent = navigator.userAgent;
+      
+      const { data, error } = await supabase
+        .from('chat_conversations')
+        .insert({
+          session_id: sessionId,
+          user_agent: userAgent,
+          status: 'active',
+          total_messages: 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao criar conversa:', error);
+        return;
+      }
+
+      if (data) {
+        setConversationId(data.id);
+      }
+    } catch (error) {
+      console.error('Erro ao criar conversa:', error);
+    }
+  };
+
+  // Salvar mensagem no Supabase
+  const saveMessage = async (content: string, isUser: boolean, messageOrder: number) => {
+    if (!conversationId) return;
+
+    try {
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversationId,
+          content,
+          is_user: isUser,
+          message_order: messageOrder
+        });
+
+      // Atualizar contador de mensagens na conversa
+      await supabase
+        .from('chat_conversations')
+        .update({ 
+          total_messages: messageOrder,
+          status: 'active'
+        })
+        .eq('id', conversationId);
+    } catch (error) {
+      console.error('Erro ao salvar mensagem:', error);
+    }
+  };
+
+  // Finalizar conversa ao fechar
+  const finishConversation = async () => {
+    if (!conversationId) return;
+
+    try {
+      await supabase
+        .from('chat_conversations')
+        .update({ 
+          ended_at: new Date().toISOString(),
+          status: 'finished'
+        })
+        .eq('id', conversationId);
+    } catch (error) {
+      console.error('Erro ao finalizar conversa:', error);
+    }
+  };
 
   // Mensagem de boas-vindas
   useEffect(() => {
@@ -90,6 +175,10 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
     setIsLoading(true);
     setMessageCount(prev => prev + 1);
 
+    // Salvar mensagem do usuário no Supabase
+    const currentMessageOrder = messageCount + 1;
+    await saveMessage(userMessage.content, true, currentMessageOrder);
+
     try {
       // Preparar contexto do usuário (pode ser expandido futuramente)
       const userContext = {
@@ -125,6 +214,11 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
       };
 
       setMessages(prev => [...prev, botMessage]);
+      
+      // Salvar mensagem do bot no Supabase
+      await saveMessage(botMessage.content, false, currentMessageOrder + 1);
+      setMessageCount(prev => prev + 1);
+      
     } catch (error) {
       // Fallback de erro
       const errorMessage: Message = {
@@ -134,6 +228,10 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+      
+      // Salvar mensagem de erro no Supabase
+      await saveMessage(errorMessage.content, false, currentMessageOrder + 1);
+      setMessageCount(prev => prev + 1);
     } finally {
       setIsLoading(false);
     }
@@ -148,6 +246,12 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
 
   const openMovidesk = () => {
     window.open('https://apolarimoveis.movidesk.com/', '_blank');
+  };
+
+  // Finalizar conversa ao fechar o chat
+  const handleClose = () => {
+    finishConversation();
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -183,7 +287,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
           <Button
             variant="ghost"
             size="sm"
-            onClick={onClose}
+            onClick={handleClose}
             className="text-white hover:bg-white/10"
           >
             <X className="h-4 w-4" />

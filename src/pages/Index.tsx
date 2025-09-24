@@ -1,10 +1,23 @@
 import FloatingChat from '@/components/chat/FloatingChat';
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Settings } from "lucide-react";
 
 const Index = () => {
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-apolar-blue/5 via-white to-apolar-gold/5">
         <div className="text-center space-y-6 max-w-2xl mx-auto px-6">
+          {/* Admin Button */}
+          <div className="flex justify-end mb-4">
+            <Link to="/auth">
+              <Button variant="outline" size="sm">
+                <Settings className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            </Link>
+          </div>
+          
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-apolar-blue to-apolar-gold bg-clip-text text-transparent">
               Apolar Imóveis
