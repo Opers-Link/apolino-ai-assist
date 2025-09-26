@@ -16,31 +16,46 @@ export type Database = {
     Tables: {
       chat_conversations: {
         Row: {
+          category: Database["public"]["Enums"]["conversation_category"] | null
           ended_at: string | null
           id: string
+          sentiment:
+            | Database["public"]["Enums"]["conversation_sentiment"]
+            | null
           session_id: string
           started_at: string
           status: string | null
+          tags: string[] | null
           total_messages: number | null
           user_agent: string | null
           user_ip: string | null
         }
         Insert: {
+          category?: Database["public"]["Enums"]["conversation_category"] | null
           ended_at?: string | null
           id?: string
+          sentiment?:
+            | Database["public"]["Enums"]["conversation_sentiment"]
+            | null
           session_id: string
           started_at?: string
           status?: string | null
+          tags?: string[] | null
           total_messages?: number | null
           user_agent?: string | null
           user_ip?: string | null
         }
         Update: {
+          category?: Database["public"]["Enums"]["conversation_category"] | null
           ended_at?: string | null
           id?: string
+          sentiment?:
+            | Database["public"]["Enums"]["conversation_sentiment"]
+            | null
           session_id?: string
           started_at?: string
           status?: string | null
+          tags?: string[] | null
           total_messages?: number | null
           user_agent?: string | null
           user_ip?: string | null
@@ -138,6 +153,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      categorize_conversation: {
+        Args: { conversation_messages: string }
+        Returns: Database["public"]["Enums"]["conversation_category"]
+      }
+      extract_conversation_tags: {
+        Args: { conversation_messages: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -148,6 +171,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      conversation_category:
+        | "usabilidade"
+        | "procedimentos"
+        | "marketing"
+        | "vendas"
+        | "outros"
+      conversation_sentiment: "positivo" | "neutro" | "negativo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -276,6 +306,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      conversation_category: [
+        "usabilidade",
+        "procedimentos",
+        "marketing",
+        "vendas",
+        "outros",
+      ],
+      conversation_sentiment: ["positivo", "neutro", "negativo"],
     },
   },
 } as const
