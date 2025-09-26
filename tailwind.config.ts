@@ -1,8 +1,13 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -14,6 +19,20 @@ export default {
     },
     extend: {
       colors: {
+        // Apolar Brand Colors
+        'apolar-blue': 'hsl(246, 58%, 31%)',      // #312C73
+        'apolar-gold': 'hsl(48, 100%, 50%)',      // #FFCC00
+        'apolar-red': 'hsl(354, 88%, 46%)',       // #D90F17
+        
+        // Brand Color Variations
+        'apolar-blue-light': 'hsl(249, 50%, 75%)', // #D0D0EA
+        'apolar-blue-med': 'hsl(238, 34%, 52%)',   // #585BA5
+        'apolar-blue-dark': 'hsl(232, 38%, 47%)',  // #4552A0
+        'apolar-gold-light': 'hsl(51, 100%, 95%)', // #FFF9E7
+        'apolar-gold-med': 'hsl(47, 100%, 88%)',   // #FFF3C2
+        'apolar-gold-alt': 'hsl(44, 93%, 71%)',    // #FDDC6F
+        
+        // Design System Colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -69,6 +88,10 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      fontFamily: {
+        display: ["var(--font-display)"],
+        body: ["var(--font-body)"],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -76,20 +99,12 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {
@@ -100,3 +115,5 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
+export default config;
