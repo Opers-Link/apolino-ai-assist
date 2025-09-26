@@ -2,102 +2,144 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Apolar Imóveis Design System - Cores oficiais da empresa */
+/* Imports de fonte */
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap');
+
+@font-face {
+  font-family: "Ample Soft";
+  src: url("/assets/fonts/AmpleSoft-Light.woff2") format("woff2"),
+       url("/assets/fonts/AmpleSoft-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ample Soft";
+  src: url("/assets/fonts/AmpleSoft-Regular.woff2") format("woff2"),
+       url("/assets/fonts/AmpleSoft-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ample Soft";
+  src: url("/assets/fonts/AmpleSoft-Medium.woff2") format("woff2"),
+       url("/assets/fonts/AmpleSoft-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ample Soft";
+  src: url("/assets/fonts/AmpleSoft-Bold.woff2") format("woff2"),
+       url("/assets/fonts/AmpleSoft-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @layer base {
   :root {
-    /* Cores principais da Apolar */
-    --apolar-blue: 235 63% 31%; /* #312C73 - Azul Noite */
-    --apolar-gold: 50 100% 50%; /* #FFCC00 - Amarelo Ouro */
-    --apolar-red: 351 87% 46%; /* #D90F17 - Vermelho Escarlate */
-    
-    /* Neutros da Apolar */
-    --apolar-light-gray: 0 0% 93%; /* #ECEDED */
-    --apolar-dark-gray: 0 0% 33%; /* #545454 */
-    --apolar-black: 0 0% 0%; /* #000000 */
+    /* Cores principais */
+    --color-primary: 48 100% 50%;  /* #FFCC00 */
+    --color-brand-deep: 246 58% 31%;  /* #312C73 */
+    --color-danger: 354 88% 46%;  /* #D90F17 */
 
-    /* Sistema base usando cores da Apolar */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    /* Cores secundárias/apoio */
+    --color-primary-100: 51 100% 95%;  /* #FFF9E7 */
+    --color-primary-200: 47 100% 88%;  /* #FFF3C2 */
+    --color-primary-300: 44 93% 71%;   /* #FDDC6F */
+    --color-brand-400: 249 50% 75%;    /* #D0D0EA */
+    --color-brand-500: 238 34% 52%;    /* #585BA5 */
+    --color-brand-600: 232 38% 47%;    /* #4552A0 */
+    --color-accent-700: 356 75% 35%;   /* #9B1915 */
+    --color-accent-800: 356 68% 22%;   /* #5E1210 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    /* Superfícies e textos */
+    --color-bg: var(--color-primary-100);
+    --color-surface: 0 0% 100%;  /* #FFFFFF */
+    --color-border: 249 33% 90%;  /* #E6E6F0 */
+    --color-text-primary: var(--color-brand-deep);
+    --color-text-secondary: 238 34% 52%;  /* #585BA5 */
+    --color-text-on-primary: 246 66% 25%;  /* #1A1440 */
+    --color-focus: var(--color-brand-600);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    /* Estados */
+    --color-success: 143 64% 37%;  /* #1F9D55 */
+    --color-warning: var(--color-primary);
+    --color-error: var(--color-danger);
 
-    --primary: 235 63% 31%; /* Azul Apolar */
-    --primary-foreground: 0 0% 100%;
+    /* Tipografia */
+    --font-display: "Ample Soft", "Rubik", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-body: "Rubik", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
-    --secondary: 0 0% 93%; /* Cinza claro Apolar */
-    --secondary-foreground: 0 0% 33%;
+    --h1-size: 48px; --h1-lh: 120%; --h1-weight: 700;
+    --h2-size: 40px; --h2-lh: 120%; --h2-weight: 700;
+    --h3-size: 32px; --h3-lh: 120%; --h3-weight: 600;
+    --h4-size: 28px; --h4-lh: 120%; --h4-weight: 600;
+    --body-size: 16px; --body-lh: 150%;
+    --small-size: 14px; --small-lh: 150%;
+    --button-size: 14px; --button-weight: 600;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 33%;
+    /* Shadcn compatibility */
+    --background: var(--color-surface);
+    --foreground: var(--color-text-primary);
+    --card: var(--color-surface);
+    --card-foreground: var(--color-text-primary);
+    --popover: var(--color-surface);
+    --popover-foreground: var(--color-text-primary);
+    --primary: var(--color-primary);
+    --primary-foreground: var(--color-text-on-primary);
+    --secondary: var(--color-brand-400);
+    --secondary-foreground: var(--color-text-primary);
+    --muted: var(--color-primary-200);
+    --muted-foreground: var(--color-text-secondary);
+    --accent: var(--color-primary-300);
+    --accent-foreground: var(--color-text-on-primary);
+    --destructive: var(--color-danger);
+    --destructive-foreground: var(--color-surface);
+    --border: var(--color-border);
+    --input: var(--color-border);
+    --ring: var(--color-focus);
+    --radius: 0.625rem;
 
-    --accent: 50 100% 50%; /* Amarelo Apolar */
-    --accent-foreground: 0 0% 0%;
+    /* Sidebar */
+    --sidebar-background: var(--color-surface);
+    --sidebar-foreground: var(--color-text-primary);
+    --sidebar-primary: var(--color-brand-deep);
+    --sidebar-primary-foreground: var(--color-surface);
+    --sidebar-accent: var(--color-primary-200);
+    --sidebar-accent-foreground: var(--color-text-primary);
+    --sidebar-border: var(--color-border);
+    --sidebar-ring: var(--color-focus);
 
-    --destructive: 351 87% 46%; /* Vermelho Apolar */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 90%;
-    --input: 0 0% 96%;
-    --ring: 235 63% 31%;
-
-    --radius: 0.5rem;
-
-    /* Chat específico - animações e sombras */
-    --chat-shadow: 0 10px 30px -5px hsl(var(--apolar-blue) / 0.3);
-    --chat-glow: 0 0 20px hsl(var(--apolar-gold) / 0.4);
-    
-    /* Gradientes da Apolar */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--apolar-blue)), hsl(var(--apolar-blue) / 0.8));
-    --gradient-accent: linear-gradient(45deg, hsl(var(--apolar-gold)), hsl(var(--apolar-gold) / 0.9));
-    --gradient-hero: linear-gradient(135deg, hsl(var(--apolar-blue)), hsl(var(--apolar-gold) / 0.2));
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Chat específico */
+    --chat-shadow: 0 10px 30px -5px hsl(var(--color-brand-deep) / 0.3);
+    --chat-glow: 0 0 20px hsl(var(--color-primary) / 0.4);
+    --gradient-primary: linear-gradient(135deg, hsl(var(--color-brand-deep)), hsl(var(--color-brand-deep) / 0.8));
+    --gradient-accent: linear-gradient(45deg, hsl(var(--color-primary)), hsl(var(--color-primary) / 0.9));
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
@@ -113,16 +155,163 @@
 }
 
 @layer base {
+  /* Resets e aplicações padrão */
   * {
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  html, body {
+    background: hsl(var(--color-bg));
+    color: hsl(var(--color-text-primary));
+    font-family: var(--font-body);
+    font-size: var(--body-size);
+    line-height: var(--body-lh);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    color: hsl(var(--color-brand-deep));
+    margin: 0 0 0.5rem;
+  }
+
+  h1 {
+    font-size: var(--h1-size);
+    line-height: var(--h1-lh);
+    font-weight: var(--h1-weight);
+  }
+
+  h2 {
+    font-size: var(--h2-size);
+    line-height: var(--h2-lh);
+    font-weight: var(--h2-weight);
+  }
+
+  h3 {
+    font-size: var(--h3-size);
+    line-height: var(--h3-lh);
+    font-weight: var(--h3-weight);
+  }
+
+  h4 {
+    font-size: var(--h4-size);
+    line-height: var(--h4-lh);
+    font-weight: var(--h4-weight);
+  }
+
+  p, li {
+    font-size: var(--body-size);
+    line-height: var(--body-lh);
+  }
+
+  .small {
+    font-size: var(--small-size);
+    line-height: var(--small-lh);
+    color: hsl(var(--color-text-secondary));
+  }
+
+  /* Responsive typography */
+  @media (max-width: 768px) {
+    :root {
+      --h1-size: 32px;
+      --h2-size: 28px;
+      --h3-size: 24px;
+      --h4-size: 20px;
+    }
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: 3px solid hsl(var(--color-focus));
+    outline-offset: 2px;
   }
 }
 
-/* Animações específicas para o chat Apolar */
+@layer components {
+  /* Botões padrão */
+  .button-primary {
+    background: hsl(var(--color-primary));
+    color: hsl(var(--color-text-on-primary));
+    border: 1px solid hsl(42 100% 44%); /* #E2B800 */
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: var(--button-size);
+    font-weight: var(--button-weight);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    transition: filter 0.2s ease;
+    cursor: pointer;
+  }
+
+  .button-primary:hover {
+    filter: brightness(0.95);
+  }
+
+  .button-secondary {
+    background: hsl(var(--color-brand-deep));
+    color: hsl(var(--color-surface));
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-weight: var(--button-weight);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+  }
+
+  .button-secondary:hover {
+    background: hsl(var(--color-brand-600));
+  }
+
+  /* Header */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: hsl(var(--color-surface));
+    border-bottom: 1px solid hsl(var(--color-border));
+  }
+
+  .app-header .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .app-header .brand img {
+    display: block;
+    height: 32px;
+    width: auto;
+  }
+
+  .app-header .header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .app-header .header-actions > * {
+    transition: background-color 0.2s ease;
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .app-header .header-actions > *:hover {
+    background: hsl(var(--color-primary-200));
+  }
+
+  @media (max-width: 768px) {
+    .app-header .container {
+      height: 56px;
+    }
+  }
+}
+
+/* Animações específicas para o chat */
 @layer utilities {
   .chat-bubble-enter {
     animation: bubbleSlideUp 0.3s ease-out;
