@@ -3,6 +3,7 @@ import { Search, Bell, User } from 'lucide-react';
 import { Button } from './button';
 import { Avatar, AvatarFallback, AvatarImage } from './avatar';
 import { Input } from './input';
+import apolarLogoOficial from '@/assets/apolar-logo-oficial.png';
 
 interface HeaderProps {
   user?: {
@@ -26,9 +27,9 @@ export function Header({
       <div className="container">
         <a href="/" className="brand">
           <img 
-            src="/src/assets/logo-apolar.svg" 
-            alt="Apolar Logo" 
-            height="32"
+            src={apolarLogoOficial} 
+            alt="Apolar Imóveis" 
+            className="h-10 w-auto"
           />
         </a>
         
