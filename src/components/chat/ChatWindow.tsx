@@ -203,8 +203,8 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
         content: userMessage.content
       });
 
-      // Chamar OpenAI service
-      const response = await openaiService.chatCompletion(chatMessages, userContext);
+      // Chamar OpenAI service com contexto do banco
+      const response = await openaiService.chatCompletion(chatMessages, userContext, conversationId);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),

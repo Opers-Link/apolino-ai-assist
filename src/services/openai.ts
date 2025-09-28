@@ -30,43 +30,31 @@ class OpenAIService {
       currentSystem?: string;
       permissions?: string[];
       lastAction?: string;
-    }
+    },
+    conversationId?: string
   ): Promise<string> {
     try {
-      // Adicionar contexto do sistema Apolar
-      const systemPrompt = this.buildSystemPrompt(userContext);
-      const fullMessages = [
-        { role: 'system' as const, content: systemPrompt },
-        ...messages
-      ];
-
-      // TODO: Implementar chamada real para a API
-      // const response = await fetch(`${this.baseURL}/chat/completions`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${this.apiKey}`,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     model: 'gpt-5',
-      //     messages: fullMessages,
-      //     max_tokens: 500,
-      //     temperature: 0.7,
-      //   }),
-      // });
-
-      // Por enquanto, retornar resposta simulada
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+      // Chamar a edge function que integra com OpenAI e banco de dados
+      const { supabase } = await import('@/integrations/supabase/client');
       
-      const responses = [
-        'Entendi sua pergunta sobre o sistema Apolar. Posso ajudá-lo com informações sobre o CRM Apolar Sales e o ERP Apolar Net.',
-        'Para essa funcionalidade específica, recomendo verificar suas permissões no sistema. Caso persista o problema, posso abrir um chamado no Movidesk para você.',
-        'Essa configuração pode ser encontrada no menu de administração. Se precisar de acesso especial, entre em contato com o suporte técnico.',
-        'Vou te ajudar com essa dúvida do sistema. Primeiro, me conte em qual módulo você está trabalhando (CRM ou ERP)?',
-        'Baseado no seu perfil de usuário, você tem acesso a essas funcionalidades. Vou te guiar passo a passo.',
-      ];
-      
-      return responses[Math.floor(Math.random() * responses.length)];
+      const { data, error } = await supabase.functions.invoke('chat-with-ai', {
+        body: {
+          messages,
+          userContext,
+          conversationId
+        }
+      });
+
+      if (error) {
+        console.error('Erro na edge function:', error);
+        throw new Error('Erro ao conectar com o serviço de IA');
+      }
+
+      if (!data?.response) {
+        throw new Error('Resposta inválida do serviço de IA');
+      }
+
+      return data.response;
       
     } catch (error) {
       console.error('Erro na API OpenAI:', error);
