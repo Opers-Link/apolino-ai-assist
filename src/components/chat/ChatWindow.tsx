@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import OpenAIService from '@/services/openai';
 import { supabase } from '@/integrations/supabase/client';
-import apolinoAi from '@/assets/apolino-ai.png';
+import apolinoMascote from '@/assets/apolino-mascote.png';
 import apolarLogo from '@/assets/apolar-logo.png';
 
 interface Message {
@@ -311,7 +311,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
             >
               {!message.isUser && (
                 <img 
-                  src={apolinoAi} 
+                  src={apolinoMascote}
                   alt="Apolino" 
                   className="h-8 w-8 rounded-full flex-shrink-0"
                 />
@@ -333,7 +333,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
           {isLoading && (
             <div className="flex gap-3">
               <img 
-                src={apolinoAi} 
+                src={apolinoMascote} 
                 alt="Apolino" 
                 className="h-8 w-8 rounded-full flex-shrink-0"
               />

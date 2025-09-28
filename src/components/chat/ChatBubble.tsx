@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import apolinoAi from '@/assets/apolino-ai.png';
+import apolinoMascote from '@/assets/apolino-mascote.png';
 
 interface ChatBubbleProps {
   onClick: () => void;
@@ -40,7 +40,7 @@ const ChatBubble = ({ onClick, isOpen, hasUnreadMessage }: ChatBubbleProps) => {
             <X className="h-6 w-6 text-white" />
           ) : (
             <img 
-              src={apolinoAi} 
+              src={apolinoMascote} 
               alt="Apolino AI" 
               className="h-10 w-10 rounded-full"
             />
