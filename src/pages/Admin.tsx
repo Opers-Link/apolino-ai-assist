@@ -291,50 +291,50 @@ const Admin = () => {
 
           <TabsContent value="dashboard" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-blue/10 to-apolar-blue/5 border-apolar-blue/20 hover:shadow-lg hover:shadow-apolar-blue/10 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Conversas</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-apolar-blue">Total de Conversas</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-apolar-blue/70" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalConversations}</div>
+                  <div className="text-2xl font-bold text-apolar-blue">{stats.totalConversations}</div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-gold/15 to-apolar-gold/8 border-apolar-gold/30 hover:shadow-lg hover:shadow-apolar-gold/10 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Mensagens</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-apolar-gold-alt">Total de Mensagens</CardTitle>
+                  <Users className="h-4 w-4 text-apolar-gold-alt/80" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalMessages}</div>
+                  <div className="text-2xl font-bold text-apolar-gold-alt">{stats.totalMessages}</div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Conversas Ativas</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-green-700">Conversas Ativas</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-600/80" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.activeConversations}</div>
+                  <div className="text-2xl font-bold text-green-700">{stats.activeConversations}</div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-red/10 to-apolar-red/5 border-apolar-red/20 hover:shadow-lg hover:shadow-apolar-red/10 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Média de Mensagens</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-apolar-red">Média de Mensagens</CardTitle>
+                  <Clock className="h-4 w-4 text-apolar-red/70" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.avgMessagesPerConversation}</div>
+                  <div className="text-2xl font-bold text-apolar-red">{stats.avgMessagesPerConversation}</div>
                 </CardContent>
               </Card>
             </div>
 
-            <Card>
+            <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
               <CardHeader>
-                <CardTitle>Conversas Recentes</CardTitle>
+                <CardTitle className="text-apolar-blue">Conversas Recentes</CardTitle>
                 <CardDescription>Últimas 10 conversas registradas</CardDescription>
               </CardHeader>
               <CardContent>
@@ -343,7 +343,7 @@ const Admin = () => {
                     {conversations.slice(0, 10).map((conversation) => (
                       <div
                         key={conversation.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer"
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-apolar-blue/5 cursor-pointer transition-all duration-200 border-apolar-blue/10"
                         onClick={() => selectConversation(conversation)}
                       >
                         <div className="flex items-center space-x-4">
@@ -385,9 +385,9 @@ const Admin = () => {
 
           <TabsContent value="categories" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-gold/8 to-background border-apolar-gold/20">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-apolar-gold-alt">
                     <PieChart className="h-5 w-5" />
                     Distribuição por Categoria
                   </CardTitle>
@@ -412,9 +412,9 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-red/8 to-background border-apolar-red/20">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-apolar-red">
                     <Tag className="h-5 w-5" />
                     Principais Dúvidas
                   </CardTitle>
@@ -423,9 +423,9 @@ const Admin = () => {
                 <CardContent>
                   <div className="space-y-3">
                     {tagStats.map((stat) => (
-                      <div key={stat.tag} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div key={stat.tag} className="flex items-center justify-between p-3 bg-apolar-blue/5 rounded-lg border border-apolar-blue/10">
                         <div>
-                          <div className="font-medium">{stat.tag}</div>
+                          <div className="font-medium text-apolar-blue">{stat.tag}</div>
                           <div className="text-sm text-muted-foreground">
                             Categorias: {stat.category}
                           </div>
@@ -444,9 +444,9 @@ const Admin = () => {
           <TabsContent value="conversations">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Lista de Conversas */}
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-blue/6 to-background border-apolar-blue/15">
                 <CardHeader>
-                  <CardTitle>Todas as Conversas</CardTitle>
+                  <CardTitle className="text-apolar-blue">Todas as Conversas</CardTitle>
                   <CardDescription>
                     Clique em uma conversa para ver as mensagens
                   </CardDescription>
@@ -458,8 +458,8 @@ const Admin = () => {
                         <div 
                           className={`p-3 rounded-lg cursor-pointer transition-colors ${
                             selectedConversation?.id === conversation.id 
-                              ? 'bg-primary/10 border-primary border' 
-                              : 'hover:bg-muted'
+                              ? 'bg-apolar-gold/20 border-apolar-gold border' 
+                              : 'hover:bg-apolar-blue/10 border border-apolar-blue/10'
                           }`}
                           onClick={() => selectConversation(conversation)}
                         >
@@ -521,9 +521,9 @@ const Admin = () => {
               </Card>
 
               {/* Mensagens da Conversa Selecionada */}
-              <Card>
+              <Card className="bg-gradient-to-br from-apolar-gold/6 to-background border-apolar-gold/15">
                 <CardHeader>
-                  <CardTitle>
+                  <CardTitle className="text-apolar-gold-alt">
                     {selectedConversation 
                       ? `Mensagens - ${selectedConversation.session_id.slice(0, 12)}...` 
                       : 'Selecione uma conversa'
@@ -541,10 +541,10 @@ const Admin = () => {
                       messages.length > 0 ? (
                         messages.map((message) => (
                           <div key={message.id}>
-                            <div className={`p-3 rounded-lg mb-2 ${
+                            <div className={`p-3 rounded-lg mb-2 border transition-all duration-200 ${
                               message.is_user 
-                                ? 'bg-primary/10 ml-8' 
-                                : 'bg-muted mr-8'
+                                ? 'bg-apolar-blue/10 ml-8 border-apolar-blue/20' 
+                                : 'bg-apolar-gold/10 mr-8 border-apolar-gold/20'
                             }`}>
                               <div className="flex justify-between items-start mb-1">
                                 <Badge variant={message.is_user ? 'default' : 'secondary'} className="text-xs">
