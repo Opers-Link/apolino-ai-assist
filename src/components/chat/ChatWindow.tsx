@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import OpenAIService from '@/services/openai';
 import { supabase } from '@/integrations/supabase/client';
 import apolinoMascote from '@/assets/apolino-mascote.png';
-import apolarLogo from '@/assets/apolar-logo.png';
+import apolarLogo from '@/assets/apolar-logo-oficial.png';
 
 interface Message {
   id: string;
