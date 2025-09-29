@@ -29,9 +29,9 @@ serve(async (req) => {
     
     console.log('Received request:', { messages, userContext, conversationId });
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not set');
     }
 
     // Initialize Supabase client
@@ -50,32 +50,38 @@ serve(async (req) => {
       ...messages
     ];
 
-    console.log('Making OpenAI request with', fullMessages.length, 'messages');
+    console.log('Making Lovable AI request with', fullMessages.length, 'messages');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'google/gemini-2.5-flash',
         messages: fullMessages,
-        max_tokens: 500,
-        temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Lovable AI API error:', errorData);
+      
+      if (response.status === 429) {
+        throw new Error('Limite de requisições excedido. Tente novamente em instantes.');
+      }
+      if (response.status === 402) {
+        throw new Error('Créditos insuficientes. Entre em contato com o administrador.');
+      }
+      
+      throw new Error(`Lovable AI API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    console.log('OpenAI response received:', aiResponse.substring(0, 100) + '...');
+    console.log('Lovable AI response received:', aiResponse.substring(0, 100) + '...');
 
     // Salvar mensagem do usuário e resposta da IA no banco
     if (conversationId) {
