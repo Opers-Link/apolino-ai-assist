@@ -325,7 +325,26 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
                     : "bg-apolar-light-gray text-apolar-dark-gray rounded-bl-none"
                 )}
               >
-                {message.content}
+                {message.content.split(/(\[IMAGE:.*?\])/).map((part, index) => {
+                  // Detectar padrão [IMAGE:url]
+                  const imageMatch = part.match(/\[IMAGE:(.*?)\]/);
+                  if (imageMatch) {
+                    const imageUrl = imageMatch[1];
+                    return (
+                      <div key={index} className="my-2">
+                        <img 
+                          src={imageUrl} 
+                          alt="Imagem do manual" 
+                          className="max-w-full h-auto rounded-md border border-gray-300 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => window.open(imageUrl, '_blank')}
+                          loading="lazy"
+                        />
+                      </div>
+                    );
+                  }
+                  // Texto normal
+                  return part ? <span key={index} className="whitespace-pre-wrap">{part}</span> : null;
+                })}
               </div>
             </div>
           ))}
