@@ -32,12 +32,39 @@ const Auth = () => {
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetError, setResetError] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     if (user) {
       navigate('/admin');
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    // Detectar hash fragment na URL para recuperação de senha
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
+    const errorParam = hashParams.get('error_description');
+    
+    if (errorParam) {
+      setError(getErrorMessage(decodeURIComponent(errorParam)));
+    } else if (type === 'recovery' && accessToken) {
+      setIsResettingPassword(true);
+    }
+  }, []);
+
+  const getErrorMessage = (error: string): string => {
+    if (error.includes('expired')) {
+      return 'O link de recuperação expirou. Por favor, solicite um novo link.';
+    }
+    if (error.includes('invalid')) {
+      return 'Link inválido. Certifique-se de usar o link mais recente enviado para seu email.';
+    }
+    return error;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -140,6 +167,48 @@ const Auth = () => {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    
+    if (newPassword !== confirmPassword) {
+      setError('As senhas não coincidem');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setError('Senha deve ter pelo menos 6 caracteres');
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) {
+        setError('Erro ao redefinir senha: ' + error.message);
+      } else {
+        setSuccess('Senha redefinida com sucesso! Redirecionando...');
+        setTimeout(() => {
+          setIsResettingPassword(false);
+          setNewPassword('');
+          setConfirmPassword('');
+          window.location.hash = '';
+          navigate('/admin');
+        }, 2000);
+      }
+    } catch (err) {
+      setError('Erro ao processar redefinição');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -160,13 +229,61 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Login</TabsTrigger>
-              <TabsTrigger value="signup">Cadastro</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="signin">
+          {isResettingPassword ? (
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nova Senha</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirmar Senha</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redefinindo...
+                  </>
+                ) : (
+                  'Redefinir Senha'
+                )}
+              </Button>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {success && (
+                <Alert>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+            </form>
+          ) : (
+            <Tabs defaultValue="signin" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Login</TabsTrigger>
+                <TabsTrigger value="signup">Cadastro</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -293,14 +410,15 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+          )}
 
-          {error && (
+          {!isResettingPassword && error && (
             <Alert className="mt-4" variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          {success && (
+          {!isResettingPassword && success && (
             <Alert className="mt-4">
               <AlertDescription>{success}</AlertDescription>
             </Alert>
