@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -25,6 +27,11 @@ const Auth = () => {
     email: '',
     password: '',
   });
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -98,6 +105,41 @@ const Auth = () => {
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResetLoading(true);
+    setResetError('');
+    setResetSuccess('');
+
+    try {
+      const emailSchema = z.string().email('Email inválido');
+      emailSchema.parse(resetEmail);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) {
+        setResetError('Erro ao enviar email de recuperação');
+      } else {
+        setResetSuccess('Email de recuperação enviado! Verifique sua caixa de entrada.');
+        setTimeout(() => {
+          setIsDialogOpen(false);
+          setResetEmail('');
+          setResetSuccess('');
+        }, 3000);
+      }
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        setResetError(err.errors[0].message);
+      } else {
+        setResetError('Erro ao processar solicitação');
+      }
+    } finally {
+      setIsResetLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -160,6 +202,55 @@ const Auth = () => {
                     'Entrar'
                   )}
                 </Button>
+                
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="link" className="w-full mt-2" type="button">
+                      Esqueci minha senha
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Recuperar Senha</DialogTitle>
+                      <DialogDescription>
+                        Digite seu email para receber um link de redefinição de senha.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handlePasswordReset} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset-email">Email</Label>
+                        <Input
+                          id="reset-email"
+                          type="email"
+                          placeholder="seu@email.com"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      {resetError && (
+                        <Alert variant="destructive">
+                          <AlertDescription>{resetError}</AlertDescription>
+                        </Alert>
+                      )}
+                      {resetSuccess && (
+                        <Alert>
+                          <AlertDescription>{resetSuccess}</AlertDescription>
+                        </Alert>
+                      )}
+                      <Button type="submit" className="w-full" disabled={isResetLoading}>
+                        {isResetLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          'Enviar Link de Recuperação'
+                        )}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </form>
             </TabsContent>
             
