@@ -7,7 +7,11 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import { ConversationDetailModal } from '@/components/admin/ConversationDetailModal';
 import { UserManagement } from '@/components/admin/UserManagement';
-import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface Conversation {
   id: string;
@@ -21,6 +25,12 @@ interface Conversation {
   category?: 'usabilidade' | 'procedimentos' | 'marketing' | 'vendas' | 'outros';
   tags?: string[];
   sentiment?: 'positivo' | 'neutro' | 'negativo';
+  assigned_to?: string;
+  assigned_at?: string;
+  ai_enabled?: boolean;
+  human_requested_at?: string;
+  first_response_time?: number;
+  agent_notes?: string;
 }
 
 interface Message {
@@ -65,8 +75,13 @@ const Admin = () => {
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [tagStats, setTagStats] = useState<TagStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [agentNotes, setAgentNotes] = useState('');
+  const [replyMessage, setReplyMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
+    loadCurrentUser();
     loadStats();
     loadConversations();
     
@@ -105,6 +120,19 @@ const Admin = () => {
       supabase.removeChannel(channel);
     };
   }, [selectedConversation]);
+
+  const loadCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*, user_roles(role)')
+        .eq('user_id', user.id)
+        .single();
+      
+      setCurrentUser({ ...user, profile });
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -207,10 +235,174 @@ const Admin = () => {
     }
   };
 
-  const selectConversation = (conversation: Conversation) => {
+  // Para tela de Conversas (SEM modal)
+  const selectConversationInList = (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    setAgentNotes(conversation.agent_notes || '');
+    setReplyMessage('');
+    loadMessages(conversation.id);
+  };
+
+  // Para Kanban e Dashboard (COM modal)
+  const selectConversationInKanban = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     setIsModalOpen(true);
     loadMessages(conversation.id);
+  };
+
+  const canManageConversations = (user: any) => {
+    const role = user?.profile?.user_roles?.role;
+    return role === 'admin' || role === 'gerente' || role === 'agente';
+  };
+
+  const handleAssignToMeInList = async (conversation: Conversation) => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const updates: any = {
+        assigned_to: currentUser.id,
+        assigned_at: new Date().toISOString(),
+        status: 'in_progress',
+        ai_enabled: false
+      };
+
+      if (!conversation.first_response_time && conversation.human_requested_at) {
+        const requestedAt = new Date(conversation.human_requested_at);
+        const now = new Date();
+        updates.first_response_time = Math.floor(
+          (now.getTime() - requestedAt.getTime()) / 1000
+        );
+      }
+
+      await supabase
+        .from('chat_conversations')
+        .update(updates)
+        .eq('id', conversation.id);
+
+      toast({
+        title: 'Atendimento assumido',
+        description: 'Você agora é responsável por este atendimento',
+      });
+      
+      loadConversations();
+      selectConversationInList({ ...conversation, ...updates });
+    } catch (error) {
+      console.error('Erro ao assumir atendimento:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível assumir o atendimento',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleToggleAIInList = async (conversation: Conversation) => {
+    try {
+      const newAiState = !conversation.ai_enabled;
+      
+      await supabase
+        .from('chat_conversations')
+        .update({ ai_enabled: newAiState })
+        .eq('id', conversation.id);
+
+      toast({
+        title: newAiState ? 'IA ativada' : 'IA desativada',
+        description: newAiState 
+          ? 'A IA pode responder ao usuário' 
+          : 'Você está no controle do atendimento',
+      });
+      
+      loadConversations();
+      selectConversationInList({ ...conversation, ai_enabled: newAiState });
+    } catch (error) {
+      console.error('Erro ao alternar IA:', error);
+    }
+  };
+
+  const handleResolveInList = async (conversation: Conversation) => {
+    try {
+      await supabase
+        .from('chat_conversations')
+        .update({
+          status: 'closed',
+          resolved_at: new Date().toISOString(),
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', conversation.id);
+
+      toast({
+        title: 'Atendimento resolvido',
+        description: 'O atendimento foi marcado como resolvido',
+      });
+      
+      loadConversations();
+      setSelectedConversation(null);
+    } catch (error) {
+      console.error('Erro ao resolver:', error);
+    }
+  };
+
+  const handleSaveNotes = async (conversation: Conversation) => {
+    try {
+      await supabase
+        .from('chat_conversations')
+        .update({ agent_notes: agentNotes })
+        .eq('id', conversation.id);
+
+      toast({
+        title: 'Notas salvas',
+        description: 'As notas internas foram salvas com sucesso',
+      });
+      
+      loadConversations();
+    } catch (error) {
+      console.error('Erro ao salvar notas:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar as notas',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSendReplyInList = async (conversation: Conversation) => {
+    if (!replyMessage.trim()) return;
+    
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', currentUser?.id)
+        .single();
+
+      const agentName = profile?.display_name || 'Agente';
+      const messageContent = `[AGENTE: ${agentName}]\n${replyMessage}`;
+
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversation.id,
+          content: messageContent,
+          is_user: false,
+          message_order: messages.length + 1
+        });
+
+      await supabase
+        .from('chat_conversations')
+        .update({ 
+          total_messages: messages.length + 1
+        })
+        .eq('id', conversation.id);
+
+      setReplyMessage('');
+      loadMessages(conversation.id);
+      
+      toast({
+        title: 'Mensagem enviada',
+      });
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -333,7 +525,7 @@ const Admin = () => {
                       <div
                         key={conversation.id}
                         className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm border border-apolar-blue/20 rounded-lg hover:bg-white/80 hover:scale-[1.01] cursor-pointer transition-all duration-200"
-                        onClick={() => selectConversation(conversation)}
+                        onClick={() => selectConversationInKanban(conversation)}
                       >
                         <div className="flex items-center space-x-4">
                           <div className={`w-3 h-3 rounded-full ${getStatusColor(conversation.status)} shadow-lg`} />
@@ -458,7 +650,7 @@ const Admin = () => {
                               ? 'bg-apolar-gold/20 border-apolar-gold border-2 scale-[1.02]' 
                               : 'bg-white/50 hover:bg-white/80 border border-apolar-blue/20'
                           }`}
-                          onClick={() => selectConversation(conversation)}
+                        onClick={() => selectConversationInList(conversation)}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div>
@@ -520,20 +712,61 @@ const Admin = () => {
               {/* Mensagens da Conversa Selecionada */}
               <Card className="bg-white/40 backdrop-blur-sm border-apolar-gold/20">
                 <CardHeader>
-                  <CardTitle className="text-apolar-gold-alt">
-                    {selectedConversation 
-                      ? `Mensagens - ${selectedConversation.session_id.slice(0, 12)}...` 
-                      : 'Selecione uma conversa'
-                    }
-                  </CardTitle>
-                  {selectedConversation && (
-                    <CardDescription>
-                      Iniciada em {formatDateTime(selectedConversation.started_at)}
-                    </CardDescription>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-apolar-gold-alt">
+                        {selectedConversation 
+                          ? `Mensagens - ${selectedConversation.session_id.slice(0, 12)}...` 
+                          : 'Selecione uma conversa'
+                        }
+                      </CardTitle>
+                      {selectedConversation && (
+                        <CardDescription>
+                          Iniciada em {formatDateTime(selectedConversation.started_at)}
+                        </CardDescription>
+                      )}
+                    </div>
+                    
+                    {/* Botões de ação para agentes */}
+                    {selectedConversation && canManageConversations(currentUser) && (
+                      <div className="flex gap-2">
+                        {selectedConversation.assigned_to === currentUser?.id ? (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleToggleAIInList(selectedConversation)}
+                            >
+                              <Bot className="h-4 w-4 mr-1" />
+                              {selectedConversation.ai_enabled ? 'Desativar' : 'Ativar'} IA
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleResolveInList(selectedConversation)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Resolver
+                            </Button>
+                          </>
+                        ) : !selectedConversation.assigned_to ? (
+                          <Button 
+                            size="sm"
+                            onClick={() => handleAssignToMeInList(selectedConversation)}
+                          >
+                            <UserCircle className="h-4 w-4 mr-1" />
+                            Assumir
+                          </Button>
+                        ) : (
+                          <Badge variant="outline">
+                            Atribuído a outro agente
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[600px]">
+                <CardContent className="space-y-4">
+                  <ScrollArea className="h-[300px]">
                     {selectedConversation ? (
                       messages.length > 0 ? (
                         messages.map((message) => (
@@ -566,6 +799,55 @@ const Admin = () => {
                       </div>
                     )}
                   </ScrollArea>
+
+                  {/* Campo de Notas do Agente */}
+                  {selectedConversation && canManageConversations(currentUser) && (
+                    <div className="space-y-2 border-t pt-4">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Notas Internas do Agente
+                      </Label>
+                      <Textarea
+                        value={agentNotes}
+                        onChange={(e) => setAgentNotes(e.target.value)}
+                        placeholder="Adicione notas sobre esta conversa (contexto, observações, próximos passos...)&#10;&#10;Estas notas são internas e não são enviadas ao usuário."
+                        className="min-h-[100px] resize-none"
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleSaveNotes(selectedConversation)}
+                        className="w-full"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar Notas
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Campo de resposta (apenas se for o agente responsável) */}
+                  {selectedConversation?.assigned_to === currentUser?.id && (
+                    <div className="space-y-2 border-t pt-4">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Responder ao Usuário
+                      </Label>
+                      <div className="flex gap-2">
+                        <Textarea
+                          value={replyMessage}
+                          onChange={(e) => setReplyMessage(e.target.value)}
+                          placeholder="Digite sua resposta para o usuário..."
+                          className="min-h-[80px] resize-none"
+                        />
+                        <Button 
+                          onClick={() => handleSendReplyInList(selectedConversation)}
+                          disabled={!replyMessage.trim()}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -576,7 +858,7 @@ const Admin = () => {
     <div className="h-full">
       <KanbanBoard 
         conversations={conversations} 
-        onConversationClick={selectConversation}
+        onConversationClick={selectConversationInKanban}
       />
     </div>
   );

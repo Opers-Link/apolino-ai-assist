@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, User, Bot, Clock, MessageSquare, CheckCircle, X } from 'lucide-react';
+import { Send, User, Bot, Clock, MessageSquare, CheckCircle, X, FileText, Save } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +35,7 @@ interface Conversation {
   ai_enabled?: boolean;
   human_requested_at?: string;
   first_response_time?: number;
+  agent_notes?: string;
 }
 
 interface Agent {
@@ -59,6 +62,7 @@ export function ConversationDetailModal({
   const [aiEnabled, setAiEnabled] = useState(conversation.ai_enabled ?? true);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [agentNotes, setAgentNotes] = useState(conversation.agent_notes || '');
   const { toast } = useToast();
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,6 +75,7 @@ export function ConversationDetailModal({
       loadMessages();
       loadAgents();
       setAiEnabled(conversation.ai_enabled ?? true);
+      setAgentNotes(conversation.agent_notes || '');
     }
   }, [isOpen, conversation.id]);
 
@@ -325,6 +330,31 @@ export function ConversationDetailModal({
     }
   };
 
+  const handleSaveNotes = async () => {
+    try {
+      const { error } = await supabase
+        .from('chat_conversations')
+        .update({ agent_notes: agentNotes })
+        .eq('id', conversation.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Notas salvas',
+        description: 'As notas internas foram salvas com sucesso',
+      });
+      
+      onUpdate?.();
+    } catch (error) {
+      console.error('Erro ao salvar notas:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar as notas',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('pt-BR');
   };
@@ -386,7 +416,7 @@ export function ConversationDetailModal({
         </DialogHeader>
         
         {/* Área de mensagens */}
-        <ScrollArea className="h-[500px] pr-4 border rounded-lg">
+        <ScrollArea className="h-[350px] pr-4 border rounded-lg">
           <div className="p-4 space-y-4">
             {messages.map((message) => (
               <div
@@ -418,9 +448,34 @@ export function ConversationDetailModal({
           </div>
         </ScrollArea>
         
+        {/* Campo de Notas do Agente */}
+        <div className="space-y-2 border-t pt-3">
+          <Label className="text-sm font-medium flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Notas Internas do Agente
+          </Label>
+          <Textarea
+            value={agentNotes}
+            onChange={(e) => setAgentNotes(e.target.value)}
+            placeholder="Adicione notas sobre esta conversa (contexto, observações, próximos passos...)&#10;&#10;Estas notas são internas e não são enviadas ao usuário."
+            className="min-h-[80px] resize-none"
+            disabled={!isAssignedToMe}
+          />
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={handleSaveNotes}
+            disabled={!isAssignedToMe}
+            className="w-full"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Salvar Notas
+          </Button>
+        </div>
+
         {/* Input de mensagem */}
         {isAssignedToMe && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 border-t pt-3">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}

@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       chat_conversations: {
         Row: {
+          agent_notes: string | null
           ai_enabled: boolean | null
           assigned_at: string | null
           assigned_to: string | null
@@ -38,6 +39,7 @@ export type Database = {
           user_ip: string | null
         }
         Insert: {
+          agent_notes?: string | null
           ai_enabled?: boolean | null
           assigned_at?: string | null
           assigned_to?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           user_ip?: string | null
         }
         Update: {
+          agent_notes?: string | null
           ai_enabled?: boolean | null
           assigned_at?: string | null
           assigned_to?: string | null
