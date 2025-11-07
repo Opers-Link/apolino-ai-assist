@@ -16,13 +16,20 @@ export type Database = {
     Tables: {
       chat_conversations: {
         Row: {
+          ai_enabled: boolean | null
+          assigned_at: string | null
+          assigned_to: string | null
           category: Database["public"]["Enums"]["conversation_category"] | null
           ended_at: string | null
+          first_response_time: number | null
+          human_requested_at: string | null
           id: string
+          resolved_at: string | null
           sentiment:
             | Database["public"]["Enums"]["conversation_sentiment"]
             | null
           session_id: string
+          sla_alert_sent: boolean | null
           started_at: string
           status: string | null
           tags: string[] | null
@@ -31,13 +38,20 @@ export type Database = {
           user_ip: string | null
         }
         Insert: {
+          ai_enabled?: boolean | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           category?: Database["public"]["Enums"]["conversation_category"] | null
           ended_at?: string | null
+          first_response_time?: number | null
+          human_requested_at?: string | null
           id?: string
+          resolved_at?: string | null
           sentiment?:
             | Database["public"]["Enums"]["conversation_sentiment"]
             | null
           session_id: string
+          sla_alert_sent?: boolean | null
           started_at?: string
           status?: string | null
           tags?: string[] | null
@@ -46,13 +60,20 @@ export type Database = {
           user_ip?: string | null
         }
         Update: {
+          ai_enabled?: boolean | null
+          assigned_at?: string | null
+          assigned_to?: string | null
           category?: Database["public"]["Enums"]["conversation_category"] | null
           ended_at?: string | null
+          first_response_time?: number | null
+          human_requested_at?: string | null
           id?: string
+          resolved_at?: string | null
           sentiment?:
             | Database["public"]["Enums"]["conversation_sentiment"]
             | null
           session_id?: string
+          sla_alert_sent?: boolean | null
           started_at?: string
           status?: string | null
           tags?: string[] | null
@@ -104,6 +125,8 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          mobile_phone: string | null
+          phone: string | null
           updated_at: string
           user_id: string
         }
@@ -113,6 +136,8 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          mobile_phone?: string | null
+          phone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -122,10 +147,47 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          mobile_phone?: string | null
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      user_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_from: string | null
+          assigned_to: string | null
+          conversation_id: string | null
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_from?: string | null
+          assigned_to?: string | null
+          conversation_id?: string | null
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_from?: string | null
+          assigned_to?: string | null
+          conversation_id?: string | null
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_assignments_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

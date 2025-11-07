@@ -39,6 +39,29 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Verificar se IA está desabilitada para esta conversa
+    if (conversationId) {
+      const { data: conversation } = await supabase
+        .from('chat_conversations')
+        .select('ai_enabled, assigned_to')
+        .eq('id', conversationId)
+        .single();
+
+      if (conversation && conversation.ai_enabled === false) {
+        console.log('AI disabled for this conversation, returning error');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Esta conversa está sendo atendida por um humano. Aguarde o atendente.',
+            assigned: true 
+          }),
+          { 
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+    }
+
     // Buscar contexto do banco de dados
     const dbContext = await gatherDatabaseContext(supabase, userContext);
     

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Maximize2, Minimize2, ExternalLink, Send } from 'lucide-react';
+import { X, Maximize2, Minimize2, ExternalLink, Send, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
   const [messageCount, setMessageCount] = useState(0);
   const [sessionId, setSessionId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
+  const [aiDisabled, setAiDisabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -118,6 +119,46 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
         .eq('id', conversationId);
     } catch (error) {
       console.error('Erro ao finalizar conversa:', error);
+    }
+  };
+
+  // Solicitar ajuda humana
+  const handleRequestHumanHelp = async () => {
+    if (!conversationId) return;
+  
+    try {
+      // Atualizar conversa
+      await supabase
+        .from('chat_conversations')
+        .update({
+          status: 'needs_help',
+          human_requested_at: new Date().toISOString(),
+          tags: ['humano_solicitado']
+        })
+        .eq('id', conversationId);
+  
+      // Adicionar mensagem do sistema
+      const systemMessage: Message = {
+        id: Date.now().toString(),
+        content: '🔔 Sua solicitação foi encaminhada para um atendente humano. Em breve você será atendido!',
+        isUser: false,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, systemMessage]);
+      setAiDisabled(true); // Desabilitar IA
+      
+      toast({
+        title: "Atendente solicitado",
+        description: "Você será atendido em breve por nossa equipe.",
+      });
+    } catch (error) {
+      console.error('Erro ao solicitar ajuda humana:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível solicitar um atendente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -371,6 +412,22 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
 
       {/* Input Area */}
       <div className="border-t p-4 space-y-3">
+        {/* Botão de ajuda humana */}
+        {!aiDisabled && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRequestHumanHelp}
+              disabled={isLoading}
+              className="gap-2 border-apolar-blue text-apolar-blue hover:bg-apolar-blue/10"
+            >
+              <UserCircle className="h-4 w-4" />
+              Falar com Atendente
+            </Button>
+          </div>
+        )}
+        
         {/* Contador de mensagens */}
         <div className="flex justify-between items-center text-xs text-apolar-dark-gray">
           <span>Mensagens: {messageCount}/{MAX_MESSAGES}</span>
@@ -392,13 +449,13 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Digite sua mensagem..."
-            disabled={isLoading || messageCount >= MAX_MESSAGES}
+            placeholder={aiDisabled ? "Aguardando atendimento humano..." : "Digite sua mensagem..."}
+            disabled={isLoading || messageCount >= MAX_MESSAGES || aiDisabled}
             className="flex-1"
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading || messageCount >= MAX_MESSAGES}
+            disabled={!inputValue.trim() || isLoading || messageCount >= MAX_MESSAGES || aiDisabled}
             className="bg-apolar-blue hover:bg-apolar-blue/90 text-white"
           >
             <Send className="h-4 w-4" />

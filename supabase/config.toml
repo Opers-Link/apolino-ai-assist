@@ -2,3 +2,6 @@ project_id = "nodhzumnsioftsftsbsn"
 
 [functions.chat-with-ai]
 verify_jwt = false
+
+[functions.check-sla]
+verify_jwt = false

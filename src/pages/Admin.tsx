@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
+import { ConversationDetailModal } from '@/components/admin/ConversationDetailModal';
+import { UserManagement } from '@/components/admin/UserManagement';
 import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings } from 'lucide-react';
 
 interface Conversation {
@@ -52,6 +54,7 @@ interface TagStats {
 const Admin = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalConversations: 0,
@@ -206,6 +209,7 @@ const Admin = () => {
 
   const selectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
+    setIsModalOpen(true);
     loadMessages(conversation.id);
   };
 
@@ -613,61 +617,45 @@ const Admin = () => {
     </div>
   );
 
-  const renderUsers = () => (
-    <div className="space-y-6">
-      <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-apolar-red/5 via-transparent to-apolar-blue/5" />
-        <CardHeader className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-12 w-12 rounded-full bg-apolar-red/10 flex items-center justify-center">
-              <Users className="h-6 w-6 text-apolar-red" />
-            </div>
-            <div>
-              <CardTitle className="text-apolar-red">Usuários</CardTitle>
-              <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="relative">
-          <p className="text-muted-foreground mb-4">Esta seção estará disponível em breve e permitirá:</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-red" />
-              Gerenciar usuários administrativos
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-red" />
-              Definir permissões de acesso
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-red" />
-              Auditoria de ações
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const renderUsers = () => <UserManagement />;
 
   return (
-    <AdminLayout>
-      {(activeTab) => {
-        switch (activeTab) {
-          case 'dashboard':
-            return renderDashboard();
-          case 'conversations':
-            return renderConversations();
-          case 'atendimentos':
-            return renderAtendimentos();
-          case 'settings':
-            return renderSettings();
-          case 'users':
-            return renderUsers();
-          default:
-            return renderDashboard();
-        }
-      }}
-    </AdminLayout>
+    <>
+      <AdminLayout>
+        {(activeTab) => {
+          switch (activeTab) {
+            case 'dashboard':
+              return renderDashboard();
+            case 'conversations':
+              return renderConversations();
+            case 'atendimentos':
+              return renderAtendimentos();
+            case 'settings':
+              return renderSettings();
+            case 'users':
+              return renderUsers();
+            default:
+              return renderDashboard();
+          }
+        }}
+      </AdminLayout>
+
+      {/* Modal de detalhes da conversa */}
+      {selectedConversation && (
+        <ConversationDetailModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedConversation(null);
+          }}
+          conversation={selectedConversation}
+          onUpdate={() => {
+            loadConversations();
+            loadStats();
+          }}
+        />
+      )}
+    </>
   );
 };
 
