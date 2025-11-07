@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Header } from '@/components/ui/header';
-import { MessageSquare, Users, TrendingUp, Clock, Tag, BarChart3, PieChart } from 'lucide-react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -52,7 +49,6 @@ interface TagStats {
 }
 
 const Admin = () => {
-  const { signOut, user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -255,41 +251,17 @@ const Admin = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-apolar-blue/5 to-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-lg">Carregando dashboard...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-apolar-blue"></div>
+          <p className="mt-4 text-lg text-apolar-blue">Carregando dashboard...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header 
-        user={{
-          name: user?.email?.split('@')[0],
-          email: user?.email || '',
-        }}
-        onProfileClick={signOut}
-      />
-      
-      <div className="container mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard Administrativo</h1>
-          <p className="text-muted-foreground">
-            Análise completa das conversas do chatbot
-          </p>
-        </div>
-
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
-            <TabsTrigger value="conversations">Conversas</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="dashboard" className="space-y-6">
+  const renderDashboard = () => (
+    <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-gradient-to-br from-apolar-blue/10 to-apolar-blue/5 border-apolar-blue/20 hover:shadow-lg hover:shadow-apolar-blue/10 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -381,9 +353,11 @@ const Admin = () => {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </TabsContent>
+    </div>
+  );
 
-          <TabsContent value="categories" className="space-y-6">
+  const renderCategories = () => (
+    <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="bg-gradient-to-br from-apolar-gold/8 to-background border-apolar-gold/20">
                 <CardHeader>
@@ -439,9 +413,11 @@ const Admin = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+    </div>
+  );
 
-          <TabsContent value="conversations">
+  const renderConversations = () => (
+    <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Lista de Conversas */}
               <Card className="bg-gradient-to-br from-apolar-blue/6 to-background border-apolar-blue/15">
@@ -572,10 +548,70 @@ const Admin = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
     </div>
+  );
+
+  const renderAtendimentos = () => (
+    <div className="space-y-6">
+      <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
+        <CardHeader>
+          <CardTitle className="text-apolar-blue">Atendimentos</CardTitle>
+          <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
+        <CardHeader>
+          <CardTitle className="text-apolar-blue">Configurações</CardTitle>
+          <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderUsers = () => (
+    <div className="space-y-6">
+      <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
+        <CardHeader>
+          <CardTitle className="text-apolar-blue">Usuários</CardTitle>
+          <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <AdminLayout>
+      {(activeTab) => {
+        switch (activeTab) {
+          case 'dashboard':
+            return renderDashboard();
+          case 'conversations':
+            return renderConversations();
+          case 'atendimentos':
+            return renderAtendimentos();
+          case 'settings':
+            return renderSettings();
+          case 'users':
+            return renderUsers();
+          default:
+            return renderDashboard();
+        }
+      }}
+    </AdminLayout>
   );
 };
 
