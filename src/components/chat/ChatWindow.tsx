@@ -300,7 +300,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
   return (
     <div
       className={cn(
-        "fixed z-40 bg-white rounded-lg shadow-2xl transition-all duration-300 chat-window-enter",
+        "fixed z-40 bg-white rounded-lg shadow-2xl transition-all duration-300 chat-window-enter flex flex-col",
         isFullscreen 
           ? "inset-4 md:inset-8" 
           : "bottom-24 right-6 h-[500px] w-[380px] md:w-[420px]"
@@ -337,10 +337,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className={cn(
-        "flex-1 p-4",
-        isFullscreen ? "h-[calc(100vh-200px)]" : "h-[340px]"
-      )}>
+      <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((message) => (
             <div
