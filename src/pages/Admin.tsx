@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
+import { isWithinInterval } from 'date-fns';
 
 interface Conversation {
   id: string;
@@ -78,12 +80,16 @@ const Admin = () => {
   const [agentNotes, setAgentNotes] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [dateFilter, setDateFilter] = useState<{
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({ startDate: null, endDate: null });
   const { toast } = useToast();
 
   useEffect(() => {
     loadCurrentUser();
-    loadStats();
-    loadConversations();
+    loadStats(dateFilter.startDate, dateFilter.endDate);
+    loadConversations(dateFilter.startDate, dateFilter.endDate);
     
     // Set up real-time updates
     const channel = supabase
@@ -96,8 +102,8 @@ const Admin = () => {
           table: 'chat_conversations'
         },
         () => {
-          loadStats();
-          loadConversations();
+          loadStats(dateFilter.startDate, dateFilter.endDate);
+          loadConversations(dateFilter.startDate, dateFilter.endDate);
         }
       )
       .on(
@@ -108,7 +114,7 @@ const Admin = () => {
           table: 'chat_messages'
         },
         () => {
-          loadStats();
+          loadStats(dateFilter.startDate, dateFilter.endDate);
           if (selectedConversation) {
             loadMessages(selectedConversation.id);
           }
@@ -119,7 +125,7 @@ const Admin = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedConversation]);
+  }, [selectedConversation, dateFilter]);
 
   const loadCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -134,7 +140,7 @@ const Admin = () => {
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = async (startDate: Date | null = null, endDate: Date | null = null) => {
     try {
       const { data: conversationsData } = await supabase
         .from('chat_conversations')
@@ -145,9 +151,20 @@ const Admin = () => {
         .select('*');
 
       if (conversationsData && messagesData) {
-        const totalConversations = conversationsData.length;
-        const totalMessages = messagesData.length;
-        const activeConversations = conversationsData.filter(c => c.status === 'active').length;
+        // Filter by date range if provided
+        const filteredConversations = startDate && endDate
+          ? conversationsData.filter(conv => {
+              const convDate = new Date(conv.started_at);
+              return isWithinInterval(convDate, { start: startDate, end: endDate });
+            })
+          : conversationsData;
+        const totalConversations = filteredConversations.length;
+        const activeConversations = filteredConversations.filter(c => c.status === 'active').length;
+        
+        // Filter messages based on filtered conversations
+        const filteredConversationIds = new Set(filteredConversations.map(c => c.id));
+        const filteredMessages = messagesData.filter(m => filteredConversationIds.has(m.conversation_id));
+        const totalMessages = filteredMessages.length;
         const avgMessagesPerConversation = totalConversations > 0 ? Math.round(totalMessages / totalConversations) : 0;
 
         setStats({
@@ -158,7 +175,7 @@ const Admin = () => {
         });
 
         // Calcular estatísticas por categoria
-        const categoryCounts = conversationsData.reduce((acc: Record<string, number>, conv) => {
+        const categoryCounts = filteredConversations.reduce((acc: Record<string, number>, conv) => {
           const category = conv.category || 'outros';
           acc[category] = (acc[category] || 0) + 1;
           return acc;
@@ -175,7 +192,7 @@ const Admin = () => {
         // Calcular estatísticas de tags por categoria
         const tagCounts: Record<string, { count: number; categories: Set<string> }> = {};
         
-        conversationsData.forEach(conv => {
+        filteredConversations.forEach(conv => {
           const category = conv.category || 'outros';
           const tags = conv.tags || [];
           
@@ -204,12 +221,21 @@ const Admin = () => {
     }
   };
 
-  const loadConversations = async () => {
+  const loadConversations = async (startDate: Date | null = null, endDate: Date | null = null) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('chat_conversations')
         .select('*')
         .order('started_at', { ascending: false });
+
+      // Apply date filter if provided
+      if (startDate && endDate) {
+        query = query
+          .gte('started_at', startDate.toISOString())
+          .lte('started_at', endDate.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setConversations(data || []);
@@ -284,7 +310,7 @@ const Admin = () => {
         description: 'Você agora é responsável por este atendimento',
       });
       
-      loadConversations();
+      loadConversations(dateFilter.startDate, dateFilter.endDate);
       selectConversationInList({ ...conversation, ...updates });
     } catch (error) {
       console.error('Erro ao assumir atendimento:', error);
@@ -312,7 +338,7 @@ const Admin = () => {
           : 'Você está no controle do atendimento',
       });
       
-      loadConversations();
+      loadConversations(dateFilter.startDate, dateFilter.endDate);
       selectConversationInList({ ...conversation, ai_enabled: newAiState });
     } catch (error) {
       console.error('Erro ao alternar IA:', error);
@@ -335,7 +361,7 @@ const Admin = () => {
         description: 'O atendimento foi marcado como resolvido',
       });
       
-      loadConversations();
+      loadConversations(dateFilter.startDate, dateFilter.endDate);
       setSelectedConversation(null);
     } catch (error) {
       console.error('Erro ao resolver:', error);
@@ -354,7 +380,7 @@ const Admin = () => {
         description: 'As notas internas foram salvas com sucesso',
       });
       
-      loadConversations();
+      loadConversations(dateFilter.startDate, dateFilter.endDate);
     } catch (error) {
       console.error('Erro ao salvar notas:', error);
       toast({
@@ -446,6 +472,12 @@ const Admin = () => {
     return new Date(dateString).toLocaleString('pt-BR');
   };
 
+  const handleDateFilterChange = (startDate: Date | null, endDate: Date | null) => {
+    setDateFilter({ startDate, endDate });
+    loadStats(startDate, endDate);
+    loadConversations(startDate, endDate);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-apolar-blue/5 to-background">
@@ -459,7 +491,9 @@ const Admin = () => {
 
   const renderDashboard = () => (
     <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <DateRangeFilter onFilterChange={handleDateFilterChange} />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-apolar-blue">Total de Conversas</CardTitle>
