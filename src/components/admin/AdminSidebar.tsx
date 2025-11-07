@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import apolarLogo from "@/assets/apolar-logo-oficial.png";
+import aiaLogo from "@/assets/aia-logo.png";
 
 const mainMenuItems = [
   {
@@ -73,16 +73,19 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
     <Sidebar className="border-r border-apolar-blue/10">
       <SidebarHeader className="p-6 border-b border-apolar-blue/10 bg-gradient-to-br from-apolar-blue to-apolar-blue-dark">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-xl p-2 border border-white/30">
+          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light backdrop-blur-xl p-2.5 shadow-lg shadow-apolar-gold/30">
             <img 
-              src={apolarLogo} 
-              alt="Apolar Logo" 
-              className="h-full w-auto object-contain"
+              src={aiaLogo} 
+              alt="AIA Logo" 
+              className="h-full w-full object-contain brightness-0 opacity-80"
             />
           </div>
-          <div className="text-white">
-            <h2 className="font-bold text-lg">Apolar</h2>
-            <p className="text-xs text-white/70">Admin Panel</p>
+          <div className="text-white flex-1">
+            <h2 className="font-bold text-base leading-tight bg-gradient-to-r from-apolar-gold via-apolar-gold-alt to-apolar-gold-light bg-clip-text text-transparent">
+              AIA
+            </h2>
+            <p className="text-xs text-white/90 font-medium mt-0.5">Inteligência Artificial</p>
+            <p className="text-[10px] text-white/60">Apolar Imóveis</p>
           </div>
         </div>
       </SidebarHeader>
