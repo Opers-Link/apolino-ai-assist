@@ -251,7 +251,7 @@ const Admin = () => {
   };
 
   const canManageConversations = (user: any) => {
-    const role = user?.profile?.user_roles?.role;
+    const role = user?.profile?.user_roles?.[0]?.role;
     return role === 'admin' || role === 'gerente' || role === 'agente';
   };
 
