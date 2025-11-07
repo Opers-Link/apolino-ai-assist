@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -263,65 +263,77 @@ const Admin = () => {
   const renderDashboard = () => (
     <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-gradient-to-br from-apolar-blue/10 to-apolar-blue/5 border-apolar-blue/20 hover:shadow-lg hover:shadow-apolar-blue/10 transition-all duration-300">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-apolar-blue">Total de Conversas</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-apolar-blue/70" />
+                  <div className="h-10 w-10 rounded-full bg-apolar-blue/10 flex items-center justify-center">
+                    <MessageSquare className="h-5 w-5 text-apolar-blue" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-apolar-blue">{stats.totalConversations}</div>
+                  <div className="text-3xl font-bold text-apolar-blue">{stats.totalConversations}</div>
+                  <p className="text-xs text-apolar-blue-med mt-1">+12% vs. mês anterior</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-apolar-gold/15 to-apolar-gold/8 border-apolar-gold/30 hover:shadow-lg hover:shadow-apolar-gold/10 transition-all duration-300">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-gold/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-apolar-gold-alt">Total de Mensagens</CardTitle>
-                  <Users className="h-4 w-4 text-apolar-gold-alt/80" />
+                  <div className="h-10 w-10 rounded-full bg-apolar-gold/10 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-apolar-gold-alt" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-apolar-gold-alt">{stats.totalMessages}</div>
+                  <div className="text-3xl font-bold text-apolar-gold-alt">{stats.totalMessages}</div>
+                  <p className="text-xs text-apolar-gold-alt/70 mt-1">+8% vs. mês anterior</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20 hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300">
+              <Card className="bg-white/40 backdrop-blur-sm border-green-500/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-green-700">Conversas Ativas</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-green-600/80" />
+                  <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-700">{stats.activeConversations}</div>
+                  <div className="text-3xl font-bold text-green-700">{stats.activeConversations}</div>
+                  <p className="text-xs text-green-600/70 mt-1">Em tempo real</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-apolar-red/10 to-apolar-red/5 border-apolar-red/20 hover:shadow-lg hover:shadow-apolar-red/10 transition-all duration-300">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-red/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-apolar-red">Média de Mensagens</CardTitle>
-                  <Clock className="h-4 w-4 text-apolar-red/70" />
+                  <div className="h-10 w-10 rounded-full bg-apolar-red/10 flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-apolar-red" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-apolar-red">{stats.avgMessagesPerConversation}</div>
+                  <div className="text-3xl font-bold text-apolar-red">{stats.avgMessagesPerConversation}</div>
+                  <p className="text-xs text-apolar-red/70 mt-1">Por conversa</p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
+            <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20">
               <CardHeader>
                 <CardTitle className="text-apolar-blue">Conversas Recentes</CardTitle>
                 <CardDescription>Últimas 10 conversas registradas</CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-[400px]">
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {conversations.slice(0, 10).map((conversation) => (
                       <div
                         key={conversation.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-apolar-blue/5 cursor-pointer transition-all duration-200 border-apolar-blue/10"
+                        className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm border border-apolar-blue/20 rounded-lg hover:bg-white/80 hover:scale-[1.01] cursor-pointer transition-all duration-200"
                         onClick={() => selectConversation(conversation)}
                       >
                         <div className="flex items-center space-x-4">
-                          <div className={`w-3 h-3 rounded-full ${getStatusColor(conversation.status)}`} />
+                          <div className={`w-3 h-3 rounded-full ${getStatusColor(conversation.status)} shadow-lg`} />
                           <div>
-                            <p className="font-medium">{conversation.session_id.slice(0, 8)}...</p>
+                            <p className="font-medium text-apolar-blue">{conversation.session_id.slice(0, 8)}...</p>
                             <p className="text-sm text-muted-foreground">
                               {formatDateTime(conversation.started_at)}
                             </p>
@@ -332,7 +344,7 @@ const Admin = () => {
                                 </Badge>
                               )}
                               {conversation.tags && conversation.tags.length > 0 && (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs bg-white/50">
                                   +{conversation.tags.length} tags
                                 </Badge>
                               )}
@@ -340,7 +352,7 @@ const Admin = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <Badge variant="secondary">
+                          <Badge variant="secondary" className="bg-apolar-blue/10 text-apolar-blue">
                             {conversation.total_messages} mensagens
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -359,10 +371,12 @@ const Admin = () => {
   const renderCategories = () => (
     <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-gradient-to-br from-apolar-gold/8 to-background border-apolar-gold/20">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-gold/20">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-apolar-gold-alt">
-                    <PieChart className="h-5 w-5" />
+                    <div className="h-10 w-10 rounded-full bg-apolar-gold/10 flex items-center justify-center">
+                      <PieChart className="h-5 w-5" />
+                    </div>
                     Distribuição por Categoria
                   </CardTitle>
                   <CardDescription>Análise das conversas por tipo de assunto</CardDescription>
@@ -370,14 +384,14 @@ const Admin = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {categoryStats.map((stat) => (
-                      <div key={stat.category} className="flex items-center justify-between">
+                      <div key={stat.category} className="flex items-center justify-between p-3 bg-white/50 backdrop-blur-sm rounded-lg border border-apolar-blue/10 hover:bg-white/80 transition-all">
                         <div className="flex items-center gap-3">
                           <Badge className={getCategoryColor(stat.category)}>
                             {stat.category}
                           </Badge>
-                          <span className="text-sm font-medium">{stat.count} conversas</span>
+                          <span className="text-sm font-medium text-apolar-blue">{stat.count} conversas</span>
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-lg font-bold text-apolar-gold-alt">
                           {stat.percentage}%
                         </div>
                       </div>
@@ -386,10 +400,12 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-apolar-red/8 to-background border-apolar-red/20">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-red/20">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-apolar-red">
-                    <Tag className="h-5 w-5" />
+                    <div className="h-10 w-10 rounded-full bg-apolar-red/10 flex items-center justify-center">
+                      <Tag className="h-5 w-5" />
+                    </div>
                     Principais Dúvidas
                   </CardTitle>
                   <CardDescription>Tags mais frequentes por categoria</CardDescription>
@@ -397,14 +413,14 @@ const Admin = () => {
                 <CardContent>
                   <div className="space-y-3">
                     {tagStats.map((stat) => (
-                      <div key={stat.tag} className="flex items-center justify-between p-3 bg-apolar-blue/5 rounded-lg border border-apolar-blue/10">
+                      <div key={stat.tag} className="flex items-center justify-between p-3 bg-white/50 backdrop-blur-sm rounded-lg border border-apolar-blue/10 hover:bg-white/80 transition-all">
                         <div>
                           <div className="font-medium text-apolar-blue">{stat.tag}</div>
                           <div className="text-sm text-muted-foreground">
                             Categorias: {stat.category}
                           </div>
                         </div>
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="bg-apolar-red/10 text-apolar-red border-apolar-red/30">
                           {stat.count}x
                         </Badge>
                       </div>
@@ -420,7 +436,7 @@ const Admin = () => {
     <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Lista de Conversas */}
-              <Card className="bg-gradient-to-br from-apolar-blue/6 to-background border-apolar-blue/15">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20">
                 <CardHeader>
                   <CardTitle className="text-apolar-blue">Todas as Conversas</CardTitle>
                   <CardDescription>
@@ -432,16 +448,16 @@ const Admin = () => {
                     {conversations.map((conversation, index) => (
                       <div key={conversation.id}>
                         <div 
-                          className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
                             selectedConversation?.id === conversation.id 
-                              ? 'bg-apolar-gold/20 border-apolar-gold border' 
-                              : 'hover:bg-apolar-blue/10 border border-apolar-blue/10'
+                              ? 'bg-apolar-gold/20 border-apolar-gold border-2 scale-[1.02]' 
+                              : 'bg-white/50 hover:bg-white/80 border border-apolar-blue/20'
                           }`}
                           onClick={() => selectConversation(conversation)}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <p className="font-medium text-sm">
+                              <p className="font-medium text-sm text-apolar-blue">
                                 Sessão: {conversation.session_id.slice(0, 12)}...
                               </p>
                               <p className="text-xs text-muted-foreground">
@@ -462,7 +478,7 @@ const Admin = () => {
                             </div>
                           </div>
                           <div className="flex justify-between items-center">
-                            <Badge variant={conversation.status === 'active' ? 'default' : 'secondary'}>
+                            <Badge variant={conversation.status === 'active' ? 'default' : 'secondary'} className="bg-apolar-blue/10 text-apolar-blue">
                               {conversation.status}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
@@ -477,19 +493,19 @@ const Admin = () => {
                           {conversation.tags && conversation.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {conversation.tags.slice(0, 3).map((tag) => (
-                                <Badge key={tag} variant="outline" className="text-xs">
+                                <Badge key={tag} variant="outline" className="text-xs bg-white/50">
                                   {tag}
                                 </Badge>
                               ))}
                               {conversation.tags.length > 3 && (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs bg-white/50">
                                   +{conversation.tags.length - 3}
                                 </Badge>
                               )}
                             </div>
                           )}
                         </div>
-                        {index < conversations.length - 1 && <div className="border-b my-2" />}
+                        {index < conversations.length - 1 && <div className="border-b border-apolar-blue/10 my-2" />}
                       </div>
                     ))}
                   </ScrollArea>
@@ -497,7 +513,7 @@ const Admin = () => {
               </Card>
 
               {/* Mensagens da Conversa Selecionada */}
-              <Card className="bg-gradient-to-br from-apolar-gold/6 to-background border-apolar-gold/15">
+              <Card className="bg-white/40 backdrop-blur-sm border-apolar-gold/20">
                 <CardHeader>
                   <CardTitle className="text-apolar-gold-alt">
                     {selectedConversation 
@@ -517,30 +533,30 @@ const Admin = () => {
                       messages.length > 0 ? (
                         messages.map((message) => (
                           <div key={message.id}>
-                            <div className={`p-3 rounded-lg mb-2 border transition-all duration-200 ${
+                            <div className={`p-4 rounded-lg mb-3 border backdrop-blur-sm transition-all duration-200 ${
                               message.is_user 
-                                ? 'bg-apolar-blue/10 ml-8 border-apolar-blue/20' 
-                                : 'bg-apolar-gold/10 mr-8 border-apolar-gold/20'
+                                ? 'bg-apolar-blue/15 ml-8 border-apolar-blue/30 hover:bg-apolar-blue/20' 
+                                : 'bg-apolar-gold/15 mr-8 border-apolar-gold/30 hover:bg-apolar-gold/20'
                             }`}>
-                              <div className="flex justify-between items-start mb-1">
-                                <Badge variant={message.is_user ? 'default' : 'secondary'} className="text-xs">
+                              <div className="flex justify-between items-start mb-2">
+                                <Badge variant={message.is_user ? 'default' : 'secondary'} className={message.is_user ? 'bg-apolar-blue text-white' : 'bg-apolar-gold-alt text-white'}>
                                   {message.is_user ? 'Usuário' : 'AI'}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground">
                                   {formatDateTime(message.timestamp)}
                                 </span>
                               </div>
-                              <p className="text-sm">{message.content}</p>
+                              <p className="text-sm leading-relaxed">{message.content}</p>
                             </div>
                           </div>
                         ))
                       ) : (
-                        <div className="text-center text-muted-foreground py-8">
+                        <div className="text-center text-muted-foreground py-8 bg-white/30 backdrop-blur-sm rounded-lg">
                           Nenhuma mensagem encontrada
                         </div>
                       )
                     ) : (
-                      <div className="text-center text-muted-foreground py-8">
+                      <div className="text-center text-muted-foreground py-8 bg-white/30 backdrop-blur-sm rounded-lg">
                         Selecione uma conversa para ver as mensagens
                       </div>
                     )}
@@ -553,13 +569,35 @@ const Admin = () => {
 
   const renderAtendimentos = () => (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
-        <CardHeader>
-          <CardTitle className="text-apolar-blue">Atendimentos</CardTitle>
-          <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+      <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-apolar-blue/5 via-transparent to-apolar-gold/5" />
+        <CardHeader className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-12 w-12 rounded-full bg-apolar-blue/10 flex items-center justify-center">
+              <UserCircle className="h-6 w-6 text-apolar-blue" />
+            </div>
+            <div>
+              <CardTitle className="text-apolar-blue">Atendimentos</CardTitle>
+              <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
+        <CardContent className="relative">
+          <p className="text-muted-foreground mb-4">Esta seção estará disponível em breve e permitirá:</p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-blue" />
+              Visualizar atendimentos em andamento
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-blue" />
+              Histórico completo de atendimentos
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-blue" />
+              Métricas de tempo de resposta
+            </li>
+          </ul>
         </CardContent>
       </Card>
     </div>
@@ -567,13 +605,35 @@ const Admin = () => {
 
   const renderSettings = () => (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
-        <CardHeader>
-          <CardTitle className="text-apolar-blue">Configurações</CardTitle>
-          <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+      <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-apolar-gold/5 via-transparent to-apolar-blue/5" />
+        <CardHeader className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-12 w-12 rounded-full bg-apolar-gold/10 flex items-center justify-center">
+              <Settings className="h-6 w-6 text-apolar-gold-alt" />
+            </div>
+            <div>
+              <CardTitle className="text-apolar-gold-alt">Configurações</CardTitle>
+              <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
+        <CardContent className="relative">
+          <p className="text-muted-foreground mb-4">Esta seção estará disponível em breve e permitirá:</p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-gold-alt" />
+              Personalizar respostas do chatbot
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-gold-alt" />
+              Configurar integrações
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-gold-alt" />
+              Ajustar preferências do sistema
+            </li>
+          </ul>
         </CardContent>
       </Card>
     </div>
@@ -581,13 +641,35 @@ const Admin = () => {
 
   const renderUsers = () => (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-br from-apolar-blue/5 to-background border-apolar-blue/15">
-        <CardHeader>
-          <CardTitle className="text-apolar-blue">Usuários</CardTitle>
-          <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+      <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-apolar-red/5 via-transparent to-apolar-blue/5" />
+        <CardHeader className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-12 w-12 rounded-full bg-apolar-red/10 flex items-center justify-center">
+              <Users className="h-6 w-6 text-apolar-red" />
+            </div>
+            <div>
+              <CardTitle className="text-apolar-red">Usuários</CardTitle>
+              <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Esta seção estará disponível em breve.</p>
+        <CardContent className="relative">
+          <p className="text-muted-foreground mb-4">Esta seção estará disponível em breve e permitirá:</p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-red" />
+              Gerenciar usuários administrativos
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-red" />
+              Definir permissões de acesso
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-apolar-red" />
+              Auditoria de ações
+            </li>
+          </ul>
         </CardContent>
       </Card>
     </div>

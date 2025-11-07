@@ -1,51 +1,48 @@
 import { useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { LogOut, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 
 interface AdminLayoutProps {
   children: (activeTab: string) => React.ReactNode;
 }
 
+const getTabTitle = (tab: string) => {
+  switch (tab) {
+    case 'dashboard':
+      return 'Dashboard';
+    case 'conversations':
+      return 'Conversas';
+    case 'atendimentos':
+      return 'Atendimentos';
+    case 'settings':
+      return 'Configurações';
+    case 'users':
+      return 'Usuários';
+    default:
+      return 'Dashboard';
+  }
+};
+
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const { signOut, user } = useAuth();
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen w-full flex bg-background">
+      <div className="min-h-screen w-full flex bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
         <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         
         <div className="flex-1 flex flex-col w-full">
           {/* Header */}
-          <header className="sticky top-0 z-50 w-full border-b border-apolar-blue/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-16 items-center justify-between px-6">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="text-apolar-blue-med hover:text-apolar-blue">
-                  <Menu className="h-5 w-5" />
-                </SidebarTrigger>
-                <div>
-                  <h1 className="text-xl font-semibold text-apolar-blue">Dashboard Administrativo</h1>
-                  <p className="text-sm text-apolar-blue-med">Análise completa das conversas do chatbot</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-apolar-blue">{user?.email?.split('@')[0]}</p>
-                  <p className="text-xs text-apolar-blue-med">{user?.email}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={signOut}
-                  className="border-apolar-blue/20 text-apolar-blue hover:bg-apolar-blue/10"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
-                </Button>
+          <header className="sticky top-0 z-50 w-full border-b border-apolar-blue/10 bg-white/40 backdrop-blur-md">
+            <div className="flex h-16 items-center px-6 gap-4">
+              <SidebarTrigger className="text-apolar-blue-med hover:text-apolar-blue lg:hidden">
+                <Menu className="h-5 w-5" />
+              </SidebarTrigger>
+              <div>
+                <h1 className="text-xl font-semibold text-apolar-blue">
+                  {getTabTitle(activeTab)}
+                </h1>
               </div>
             </div>
           </header>
