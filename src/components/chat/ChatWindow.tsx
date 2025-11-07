@@ -140,7 +140,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
       // Adicionar mensagem do sistema
       const systemMessage: Message = {
         id: Date.now().toString(),
-        content: '🔔 Sua solicitação foi encaminhada para um atendente humano. Em breve você será atendido!',
+        content: 'Aguarde um pouco, você será atendido em breve.',
         isUser: false,
         timestamp: new Date()
       };
@@ -167,7 +167,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         id: '1',
-        content: 'Olá! 👋 Sou o Apolino, assistente virtual da Apolar. Posso te ajudar com dúvidas sobre o CRM (Apolar Sales) e o ERP (Apolar Net).',
+        content: 'Olá! Como posso te ajudar hoje?',
         isUser: false,
         timestamp: new Date()
       };
@@ -363,7 +363,7 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
                   "max-w-[80%] p-3 rounded-lg text-sm",
                   message.isUser
                     ? "bg-apolar-blue text-white rounded-br-none"
-                    : "bg-apolar-light-gray text-apolar-dark-gray rounded-bl-none"
+                    : "bg-gray-100 text-gray-900 rounded-bl-none"
                 )}
               >
                 {message.content.split(/(\[IMAGE:.*?\])/).map((part, index) => {
@@ -412,34 +412,45 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
 
       {/* Input Area */}
       <div className="border-t p-4 space-y-3">
-        {/* Botão de ajuda humana */}
-        {!aiDisabled && (
+        {/* Indicação de aguardando atendente */}
+        {aiDisabled && (
           <div className="flex justify-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRequestHumanHelp}
-              disabled={isLoading}
-              className="gap-2 border-apolar-blue text-apolar-blue hover:bg-apolar-blue/10"
-            >
-              <UserCircle className="h-4 w-4" />
-              Falar com Atendente
-            </Button>
+            <div className="bg-apolar-gold/10 border border-apolar-gold text-apolar-dark-gray px-4 py-2 rounded-lg text-sm font-medium">
+              ⏳ Aguardando atendimento humano...
+            </div>
           </div>
         )}
         
-        {/* Contador de mensagens */}
-        <div className="flex justify-between items-center text-xs text-apolar-dark-gray">
-          <span>Mensagens: {messageCount}/{MAX_MESSAGES}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openMovidesk}
-            className="text-xs h-7 gap-1 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Abrir Chamado
-          </Button>
+        {/* Botões de ação */}
+        <div className="flex gap-2 items-center justify-between">
+          <span className="text-xs text-apolar-dark-gray">
+            Mensagens: {messageCount}/{MAX_MESSAGES}
+          </span>
+          
+          <div className="flex gap-2">
+            {!aiDisabled && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestHumanHelp}
+                disabled={isLoading}
+                className="gap-2 border-apolar-blue text-apolar-blue hover:bg-apolar-blue hover:text-white transition-all"
+              >
+                <UserCircle className="h-4 w-4" />
+                Falar com Atendente
+              </Button>
+            )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openMovidesk}
+              className="gap-1 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Abrir Chamado
+            </Button>
+          </div>
         </div>
 
         {/* Input */}
