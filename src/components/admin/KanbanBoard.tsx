@@ -156,14 +156,61 @@ function DroppableColumn({
   isOver
 }: DroppableColumnProps) {
   return (
-    <Card className={`flex flex-col transition-all ${
-      isOver && !isDropDisabled ? 'ring-2 ring-primary bg-primary/5' : ''
-    } ${isDropDisabled ? 'opacity-60' : ''}`}>
-      <CardHeader className={`${column.color} border-b`}>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <column.icon className="h-5 w-5" />
-          {column.title}
-          <Badge variant="secondary" className="ml-auto">
+    <Card className={`flex flex-col transition-all duration-300 bg-white/70 backdrop-blur-xl border ${
+      isOver && !isDropDisabled ? 'ring-2 ring-apolar-gold shadow-2xl shadow-apolar-gold/20 scale-[1.02]' : ''
+    } ${isDropDisabled ? 'opacity-60' : ''} ${
+      column.id === 'needs_help' ? 'border-yellow-200' : ''
+    } ${
+      column.id === 'in_progress' ? 'border-apolar-blue/20' : ''
+    } ${
+      column.id === 'closed' ? 'border-green-200' : ''
+    } ${
+      column.id === 'all' ? 'border-apolar-gold/20' : ''
+    }`}>
+      <CardHeader className={`border-b backdrop-blur-sm transition-all ${
+        column.id === 'needs_help' ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-200' : ''
+      } ${
+        column.id === 'in_progress' ? 'bg-gradient-to-r from-apolar-blue/10 to-apolar-blue/5 border-apolar-blue/20' : ''
+      } ${
+        column.id === 'closed' ? 'bg-gradient-to-r from-green-100 to-green-50 border-green-200' : ''
+      } ${
+        column.id === 'all' ? 'bg-gradient-to-r from-apolar-gold/10 to-apolar-gold/5 border-apolar-gold/20' : ''
+      }`}>
+        <CardTitle className="flex items-center gap-3 text-base">
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-md ${
+            column.id === 'needs_help' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500' : ''
+          } ${
+            column.id === 'in_progress' ? 'bg-gradient-to-br from-apolar-blue to-apolar-blue-dark' : ''
+          } ${
+            column.id === 'closed' ? 'bg-gradient-to-br from-green-500 to-green-600' : ''
+          } ${
+            column.id === 'all' ? 'bg-gradient-to-br from-apolar-gold to-apolar-gold-alt' : ''
+          }`}>
+            <column.icon className="h-5 w-5 text-white" />
+          </div>
+          <span className={`font-bold ${
+            column.id === 'needs_help' ? 'text-yellow-700' : ''
+          } ${
+            column.id === 'in_progress' ? 'text-apolar-blue' : ''
+          } ${
+            column.id === 'closed' ? 'text-green-700' : ''
+          } ${
+            column.id === 'all' ? 'text-apolar-gold-alt' : ''
+          }`}>
+            {column.title}
+          </span>
+          <Badge 
+            variant="secondary" 
+            className={`ml-auto font-bold ${
+              column.id === 'needs_help' ? 'bg-yellow-200 text-yellow-800' : ''
+            } ${
+              column.id === 'in_progress' ? 'bg-apolar-blue/20 text-apolar-blue' : ''
+            } ${
+              column.id === 'closed' ? 'bg-green-200 text-green-800' : ''
+            } ${
+              column.id === 'all' ? 'bg-apolar-gold/30 text-apolar-gold-alt' : ''
+            }`}
+          >
             {conversations.length}
           </Badge>
         </CardTitle>

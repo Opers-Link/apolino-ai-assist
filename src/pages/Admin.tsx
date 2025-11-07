@@ -494,101 +494,166 @@ const Admin = () => {
       <DateRangeFilter onFilterChange={handleDateFilterChange} />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-apolar-blue">Total de Conversas</CardTitle>
-                  <div className="h-10 w-10 rounded-full bg-apolar-blue/10 flex items-center justify-center">
-                    <MessageSquare className="h-5 w-5 text-apolar-blue" />
+              {/* Card Blue - Total Conversas */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-apolar-blue/5 border border-apolar-blue/20 hover:border-apolar-blue/40 hover:shadow-2xl hover:shadow-apolar-blue/10 hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-apolar-blue/5 rounded-full blur-2xl group-hover:bg-apolar-blue/10 transition-all" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+                  <div>
+                    <CardTitle className="text-sm font-medium text-apolar-blue/70 uppercase tracking-wide">
+                      Total de Conversas
+                    </CardTitle>
+                    <div className="text-4xl font-bold bg-gradient-to-br from-apolar-blue to-apolar-blue-dark bg-clip-text text-transparent mt-2">
+                      {stats.totalConversations}
+                    </div>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-apolar-blue to-apolar-blue-dark flex items-center justify-center shadow-lg shadow-apolar-blue/30 group-hover:scale-110 transition-transform">
+                    <MessageSquare className="h-7 w-7 text-white" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-apolar-blue">{stats.totalConversations}</div>
-                  <p className="text-xs text-apolar-blue-med mt-1">+12% vs. mês anterior</p>
+                <CardContent className="relative z-10">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <p className="text-sm font-medium text-green-600">+12% vs. mês anterior</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/40 backdrop-blur-sm border-apolar-gold/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-apolar-gold-alt">Total de Mensagens</CardTitle>
-                  <div className="h-10 w-10 rounded-full bg-apolar-gold/10 flex items-center justify-center">
-                    <Users className="h-5 w-5 text-apolar-gold-alt" />
+              {/* Card Gold - Total Mensagens */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-apolar-gold/5 border border-apolar-gold/30 hover:border-apolar-gold/50 hover:shadow-2xl hover:shadow-apolar-gold/20 hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-apolar-gold/10 rounded-full blur-2xl group-hover:bg-apolar-gold/20 transition-all" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+                  <div>
+                    <CardTitle className="text-sm font-medium text-apolar-gold-alt/70 uppercase tracking-wide">
+                      Total de Mensagens
+                    </CardTitle>
+                    <div className="text-4xl font-bold bg-gradient-to-br from-apolar-gold-alt to-apolar-gold bg-clip-text text-transparent mt-2">
+                      {stats.totalMessages}
+                    </div>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-apolar-gold to-apolar-gold-alt flex items-center justify-center shadow-lg shadow-apolar-gold/30 group-hover:scale-110 transition-transform">
+                    <Users className="h-7 w-7 text-apolar-blue" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-apolar-gold-alt">{stats.totalMessages}</div>
-                  <p className="text-xs text-apolar-gold-alt/70 mt-1">+8% vs. mês anterior</p>
+                <CardContent className="relative z-10">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <p className="text-sm font-medium text-green-600">+8% vs. mês anterior</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/40 backdrop-blur-sm border-green-500/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-green-700">Conversas Ativas</CardTitle>
-                  <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
+              {/* Card Green - Ativas */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-green-50 border border-green-200 hover:border-green-300 hover:shadow-2xl hover:shadow-green-100 hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-apolar-gold/10 to-green-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+                  <div>
+                    <CardTitle className="text-sm font-medium text-green-700/70 uppercase tracking-wide">
+                      Conversas Ativas
+                    </CardTitle>
+                    <div className="text-4xl font-bold bg-gradient-to-br from-green-600 to-green-700 bg-clip-text text-transparent mt-2">
+                      {stats.activeConversations}
+                    </div>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform relative">
+                    <div className="absolute inset-0 bg-apolar-gold/20 rounded-2xl animate-pulse" />
+                    <TrendingUp className="h-7 w-7 text-white relative z-10" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-700">{stats.activeConversations}</div>
-                  <p className="text-xs text-green-600/70 mt-1">Em tempo real</p>
+                <CardContent className="relative z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <p className="text-sm font-medium text-green-600">Em tempo real</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/40 backdrop-blur-sm border-apolar-red/20 hover:bg-white/50 hover:scale-[1.02] transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-apolar-red">Média de Mensagens</CardTitle>
-                  <div className="h-10 w-10 rounded-full bg-apolar-red/10 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-apolar-red" />
+              {/* Card Red - Média */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-apolar-red/5 border border-apolar-red/20 hover:border-apolar-red/40 hover:shadow-2xl hover:shadow-apolar-red/10 hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-apolar-red/5 rounded-full blur-2xl group-hover:bg-apolar-red/10 transition-all" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+                  <div>
+                    <CardTitle className="text-sm font-medium text-apolar-red/70 uppercase tracking-wide">
+                      Média de Mensagens
+                    </CardTitle>
+                    <div className="text-4xl font-bold bg-gradient-to-br from-apolar-red to-red-700 bg-clip-text text-transparent mt-2">
+                      {stats.avgMessagesPerConversation}
+                    </div>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-apolar-red to-red-600 flex items-center justify-center shadow-lg shadow-apolar-red/30 group-hover:scale-110 transition-transform">
+                    <Clock className="h-7 w-7 text-white" />
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-apolar-red">{stats.avgMessagesPerConversation}</div>
-                  <p className="text-xs text-apolar-red/70 mt-1">Por conversa</p>
+                <CardContent className="relative z-10">
+                  <p className="text-sm font-medium text-apolar-red/70">Por conversa</p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20">
-              <CardHeader>
-                <CardTitle className="text-apolar-blue">Conversas Recentes</CardTitle>
-                <CardDescription>Últimas 10 conversas registradas</CardDescription>
+            {/* Card de Conversas Recentes */}
+            <Card className="bg-white/70 backdrop-blur-xl border border-apolar-blue/10 shadow-xl">
+              <CardHeader className="border-b border-apolar-blue/10 bg-gradient-to-r from-apolar-blue/5 to-transparent">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-apolar-blue flex items-center gap-2">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-apolar-blue to-apolar-blue-dark flex items-center justify-center">
+                        <MessageSquare className="h-5 w-5 text-white" />
+                      </div>
+                      Conversas Recentes
+                    </CardTitle>
+                    <CardDescription className="mt-1">Últimas 10 conversas registradas</CardDescription>
+                  </div>
+                  <Badge className="bg-gradient-to-r from-apolar-gold to-apolar-gold-alt text-apolar-blue font-semibold px-4 py-1">
+                    {conversations.length} total
+                  </Badge>
+                </div>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[400px]">
+              <CardContent className="p-6">
+                <ScrollArea className="h-[400px] pr-4">
                   <div className="space-y-3">
-                    {conversations.slice(0, 10).map((conversation) => (
+                    {conversations.slice(0, 10).map((conversation, index) => (
                       <div
                         key={conversation.id}
-                        className="flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm border border-apolar-blue/20 rounded-lg hover:bg-white/80 hover:scale-[1.01] cursor-pointer transition-all duration-200"
+                        className="group relative overflow-hidden p-4 bg-gradient-to-r from-white to-apolar-blue/5 border border-apolar-blue/10 rounded-xl hover:border-apolar-gold/40 hover:shadow-lg hover:shadow-apolar-gold/10 hover:-translate-y-1 cursor-pointer transition-all duration-300 fade-in-up"
+                        style={{ animationDelay: `${index * 50}ms` }}
                         onClick={() => selectConversationInKanban(conversation)}
                       >
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-3 h-3 rounded-full ${getStatusColor(conversation.status)} shadow-lg`} />
-                          <div>
-                            <p className="font-medium text-apolar-blue">{conversation.session_id.slice(0, 8)}...</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatDateTime(conversation.started_at)}
-                            </p>
-                            <div className="flex gap-2 mt-2">
-                              {conversation.category && (
-                                <Badge className={getCategoryColor(conversation.category)}>
-                                  {conversation.category}
-                                </Badge>
-                              )}
-                              {conversation.tags && conversation.tags.length > 0 && (
-                                <Badge variant="outline" className="text-xs bg-white/50">
-                                  +{conversation.tags.length} tags
-                                </Badge>
-                              )}
+                        {/* Linha de cor lateral */}
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                          conversation.status === 'active' ? 'bg-gradient-to-b from-green-500 to-green-600' :
+                          conversation.status === 'needs_help' ? 'bg-gradient-to-b from-apolar-red to-red-600' :
+                          'bg-gradient-to-b from-apolar-blue to-apolar-blue-dark'
+                        }`} />
+                        
+                        <div className="flex items-center justify-between ml-3">
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-3 h-3 rounded-full ${getStatusColor(conversation.status)} shadow-lg`} />
+                            <div>
+                              <p className="font-medium text-apolar-blue">{conversation.session_id.slice(0, 8)}...</p>
+                              <p className="text-sm text-muted-foreground">
+                                {formatDateTime(conversation.started_at)}
+                              </p>
+                              <div className="flex gap-2 mt-2">
+                                {conversation.category && (
+                                  <Badge className={getCategoryColor(conversation.category)}>
+                                    {conversation.category}
+                                  </Badge>
+                                )}
+                                {conversation.tags && conversation.tags.length > 0 && (
+                                  <Badge variant="outline" className="text-xs bg-white/50">
+                                    +{conversation.tags.length} tags
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant="secondary" className="bg-apolar-blue/10 text-apolar-blue">
-                            {conversation.total_messages} mensagens
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {conversation.status === 'active' ? 'Ativa' : 'Finalizada'}
-                          </p>
+                          <div className="text-right">
+                            <Badge variant="secondary" className="bg-apolar-blue/10 text-apolar-blue">
+                              {conversation.total_messages} mensagens
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {conversation.status === 'active' ? 'Ativa' : 'Finalizada'}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))}
