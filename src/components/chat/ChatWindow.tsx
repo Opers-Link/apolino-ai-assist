@@ -191,6 +191,92 @@ const ChatWindow = ({ isOpen, onClose, isFullscreen, onToggleFullscreen }: ChatW
     }
   }, [isOpen]);
 
+  // Listener de tempo real para mensagens do agente
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`conversation-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          const newMessage = payload.new as any;
+          
+          // Verificar se a mensagem não é do usuário (é do agente)
+          if (!newMessage.is_user) {
+            const message: Message = {
+              id: newMessage.id,
+              content: newMessage.content,
+              isUser: false,
+              timestamp: new Date(newMessage.timestamp)
+            };
+            
+            setMessages(prev => {
+              // Evitar duplicatas
+              const exists = prev.some(m => m.id === message.id);
+              if (exists) return prev;
+              return [...prev, message];
+            });
+            
+            // Atualizar contador se necessário
+            setMessageCount(prev => Math.max(prev, newMessage.message_order));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
+
+  // Verificar se IA foi desabilitada ou agente assumiu
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const checkConversationStatus = async () => {
+      const { data } = await supabase
+        .from('chat_conversations')
+        .select('ai_enabled, status')
+        .eq('id', conversationId)
+        .single();
+      
+      if (data) {
+        // Se IA foi desabilitada ou status mudou para in_progress, agente assumiu
+        if ((data.ai_enabled === false || data.status === 'in_progress') && !aiDisabled) {
+          setAiDisabled(true);
+          
+          // Adicionar mensagem de confirmação
+          const confirmMessage: Message = {
+            id: `agent-${Date.now()}`,
+            content: '✅ Um atendente assumiu sua conversa!',
+            isUser: false,
+            timestamp: new Date()
+          };
+          
+          setMessages(prev => {
+            // Evitar adicionar a mensagem múltiplas vezes
+            const hasConfirmMessage = prev.some(m => m.id.startsWith('agent-'));
+            if (hasConfirmMessage) return prev;
+            return [...prev, confirmMessage];
+          });
+        }
+      }
+    };
+
+    // Verificar imediatamente e depois a cada 5 segundos
+    checkConversationStatus();
+    const interval = setInterval(checkConversationStatus, 5000);
+    
+    return () => clearInterval(interval);
+  }, [conversationId, aiDisabled]);
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
