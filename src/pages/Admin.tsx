@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings } from 'lucide-react';
 
 interface Conversation {
@@ -568,38 +569,11 @@ const Admin = () => {
   );
 
   const renderAtendimentos = () => (
-    <div className="space-y-6">
-      <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-apolar-blue/5 via-transparent to-apolar-gold/5" />
-        <CardHeader className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-12 w-12 rounded-full bg-apolar-blue/10 flex items-center justify-center">
-              <UserCircle className="h-6 w-6 text-apolar-blue" />
-            </div>
-            <div>
-              <CardTitle className="text-apolar-blue">Atendimentos</CardTitle>
-              <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="relative">
-          <p className="text-muted-foreground mb-4">Esta seção estará disponível em breve e permitirá:</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-blue" />
-              Visualizar atendimentos em andamento
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-blue" />
-              Histórico completo de atendimentos
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-blue" />
-              Métricas de tempo de resposta
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+    <div className="h-full">
+      <KanbanBoard 
+        conversations={conversations} 
+        onConversationClick={selectConversation}
+      />
     </div>
   );
 

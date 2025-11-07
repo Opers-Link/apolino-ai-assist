@@ -34,13 +34,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         
         <div className="flex-1 flex flex-col w-full">
           {/* Header */}
-          <header className="sticky top-0 z-50 w-full border-b border-apolar-blue/10 bg-white/40 backdrop-blur-md">
+          <header className="sticky top-0 z-50 w-full border-b bg-background">
             <div className="flex h-16 items-center px-6 gap-4">
-              <SidebarTrigger className="text-apolar-blue-med hover:text-apolar-blue lg:hidden">
+              <SidebarTrigger className="lg:hidden">
                 <Menu className="h-5 w-5" />
               </SidebarTrigger>
               <div>
-                <h1 className="text-xl font-semibold text-apolar-blue">
+                <h1 className="text-xl font-semibold text-foreground">
                   {getTabTitle(activeTab)}
                 </h1>
               </div>

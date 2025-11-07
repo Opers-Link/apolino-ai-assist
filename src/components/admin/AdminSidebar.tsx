@@ -70,8 +70,8 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
   const { user } = useAuth();
 
   return (
-    <Sidebar className="border-r border-white/10 bg-apolar-blue-dark/60 backdrop-blur-md">
-      <SidebarHeader className="p-6 border-b border-white/10">
+    <Sidebar className="border-r">
+      <SidebarHeader className="p-6 border-b">
         <div className="flex items-center gap-3">
           <img 
             src={apolarLogo} 
@@ -84,7 +84,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
       <SidebarContent className="px-4 py-8">
         {/* Menu Principal */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-white/50 font-semibold mb-3 px-4">
+          <SidebarGroupLabel className="text-xs uppercase tracking-wider font-semibold mb-3 px-4">
             Menu Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -97,8 +97,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
                       onClick={() => onTabChange(item.value)}
                       className={cn(
                         "w-full justify-start gap-3 px-4 py-2.5 rounded-lg transition-all duration-200",
-                        "text-white/70 hover:bg-white/10 hover:text-white",
-                        isActive && "bg-white/15 text-white font-medium"
+                        isActive && "font-medium"
                       )}
                     >
                       <item.icon className="h-5 w-5" />
@@ -113,7 +112,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
 
         {/* Configurações */}
         <SidebarGroup className="mt-8">
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-white/50 font-semibold mb-3 px-4">
+          <SidebarGroupLabel className="text-xs uppercase tracking-wider font-semibold mb-3 px-4">
             Configurações
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -126,8 +125,7 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
                       onClick={() => onTabChange(item.value)}
                       className={cn(
                         "w-full justify-start gap-3 px-4 py-2.5 rounded-lg transition-all duration-200",
-                        "text-white/70 hover:bg-white/10 hover:text-white",
-                        isActive && "bg-white/15 text-white font-medium"
+                        isActive && "font-medium"
                       )}
                     >
                       <item.icon className="h-5 w-5" />
@@ -141,18 +139,18 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-white/10 bg-apolar-blue/5">
+      <SidebarFooter className="p-4 border-t">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border-2 border-white/20">
+          <Avatar className="h-10 w-10">
             <AvatarFallback className="bg-apolar-blue text-white font-semibold">
               {getUserInitials(user?.email)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
+            <p className="text-sm font-medium truncate">
               {getUserName(user?.email)}
             </p>
-            <p className="text-xs text-white/60 truncate">
+            <p className="text-xs text-muted-foreground truncate">
               {user?.email}
             </p>
           </div>
