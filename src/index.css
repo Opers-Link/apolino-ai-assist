@@ -67,6 +67,14 @@
     --color-text-on-primary: 246 66% 25%;  /* #1A1440 */
     --color-focus: var(--color-brand-600);
 
+    /* Cores Apolar - CSS Variables para Tailwind */
+    --apolar-blue: 246 58% 31%;      /* #312C73 */
+    --apolar-gold: 48 100% 50%;      /* #FFCC00 */
+    --apolar-red: 354 88% 46%;       /* #D90F17 */
+    --apolar-light-gray: 0 0% 95%;   /* #F2F2F2 */
+    --apolar-dark-gray: 0 0% 45%;    /* #737373 */
+    --apolar-black: 0 0% 13%;        /* #222222 */
+
     /* Estados */
     --color-success: 143 64% 37%;  /* #1F9D55 */
     --color-warning: var(--color-primary);
