@@ -65,8 +65,8 @@ serve(async (req) => {
     // Buscar contexto do banco de dados
     const dbContext = await gatherDatabaseContext(supabase, userContext);
     
-    // Construir prompt do sistema com contexto do banco
-    const systemPrompt = buildSystemPrompt(userContext, dbContext);
+    // Buscar prompt customizado do banco ou usar fallback
+    const systemPrompt = await getSystemPrompt(supabase, userContext, dbContext);
     
     const fullMessages = [
       { role: 'system' as const, content: systemPrompt },
@@ -124,6 +124,65 @@ serve(async (req) => {
     });
   }
 });
+
+async function getSystemPrompt(supabase: any, userContext?: UserContext, dbContext?: string): Promise<string> {
+  try {
+    // Buscar prompt customizado do banco
+    const { data: promptData, error } = await supabase
+      .from('system_prompts')
+      .select('content')
+      .eq('name', 'master_prompt_aia')
+      .eq('is_active', true)
+      .single();
+
+    if (error || !promptData?.content) {
+      console.log('No custom prompt found, using fallback');
+      return buildSystemPrompt(userContext, dbContext);
+    }
+
+    console.log('Using custom prompt from database');
+    
+    // Substituir variáveis dinâmicas
+    let customPrompt = promptData.content;
+    
+    // Substituir {{database_context}}
+    if (dbContext) {
+      customPrompt = customPrompt.replace(/\{\{database_context\}\}/g, dbContext);
+    } else {
+      customPrompt = customPrompt.replace(/\{\{database_context\}\}/g, '');
+    }
+    
+    // Substituir {{user_context}}
+    if (userContext) {
+      let userContextStr = '';
+      if (userContext.userId) userContextStr += `- ID do usuário: ${userContext.userId}\n`;
+      if (userContext.currentSystem) userContextStr += `- Sistema atual: ${userContext.currentSystem}\n`;
+      if (userContext.permissions?.length) userContextStr += `- Permissões: ${userContext.permissions.join(', ')}\n`;
+      if (userContext.lastAction) userContextStr += `- Última ação: ${userContext.lastAction}\n`;
+      customPrompt = customPrompt.replace(/\{\{user_context\}\}/g, userContextStr || 'Contexto não disponível');
+    } else {
+      customPrompt = customPrompt.replace(/\{\{user_context\}\}/g, '');
+    }
+    
+    // Substituir {{user_name}}
+    if (userContext?.userId) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', userContext.userId)
+        .single();
+      
+      customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, profile?.display_name || 'Usuário');
+    } else {
+      customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, 'Usuário');
+    }
+    
+    return customPrompt;
+  } catch (error) {
+    console.error('Error fetching custom prompt:', error);
+    return buildSystemPrompt(userContext, dbContext);
+  }
+}
 
 async function gatherDatabaseContext(supabase: any, userContext?: UserContext) {
   let context = '';

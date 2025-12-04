@@ -7,7 +7,9 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import { ConversationDetailModal } from '@/components/admin/ConversationDetailModal';
 import { UserManagement } from '@/components/admin/UserManagement';
-import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PromptEditor } from '@/components/admin/PromptEditor';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -966,33 +968,66 @@ const Admin = () => {
     <div className="space-y-6">
       <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-apolar-gold/5 via-transparent to-apolar-blue/5" />
-        <CardHeader className="relative">
-          <div className="flex items-center gap-3 mb-2">
+        <CardHeader className="relative pb-0">
+          <div className="flex items-center gap-3 mb-4">
             <div className="h-12 w-12 rounded-full bg-apolar-gold/10 flex items-center justify-center">
               <Settings className="h-6 w-6 text-apolar-gold-alt" />
             </div>
             <div>
               <CardTitle className="text-apolar-gold-alt">Configurações</CardTitle>
-              <CardDescription>Funcionalidade em desenvolvimento</CardDescription>
+              <CardDescription>Gerencie as configurações do sistema</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="relative">
-          <p className="text-muted-foreground mb-4">Esta seção estará disponível em breve e permitirá:</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-gold-alt" />
-              Personalizar respostas do chatbot
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-gold-alt" />
-              Configurar integrações
-            </li>
-            <li className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-apolar-gold-alt" />
-              Ajustar preferências do sistema
-            </li>
-          </ul>
+        <CardContent className="relative pt-0">
+          <Tabs defaultValue="prompt" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-slate-100/80">
+              <TabsTrigger value="prompt" className="data-[state=active]:bg-white data-[state=active]:text-apolar-gold-alt">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Prompt da IA
+              </TabsTrigger>
+              <TabsTrigger value="general" className="data-[state=active]:bg-white data-[state=active]:text-apolar-gold-alt">
+                <Settings className="h-4 w-4 mr-2" />
+                Geral
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="data-[state=active]:bg-white data-[state=active]:text-apolar-gold-alt">
+                <Bot className="h-4 w-4 mr-2" />
+                Integrações
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="prompt" className="mt-6">
+              <PromptEditor />
+            </TabsContent>
+
+            <TabsContent value="general" className="mt-6">
+              <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+                <CardHeader>
+                  <CardTitle className="text-lg">Configurações Gerais</CardTitle>
+                  <CardDescription>Em desenvolvimento</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Esta seção permitirá configurar preferências gerais do sistema como notificações, idioma e tema.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="integrations" className="mt-6">
+              <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+                <CardHeader>
+                  <CardTitle className="text-lg">Integrações</CardTitle>
+                  <CardDescription>Em desenvolvimento</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Esta seção permitirá configurar integrações com outros sistemas como Movidesk, WhatsApp e APIs externas.
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
