@@ -548,8 +548,7 @@ export const KnowledgeModulesManager: React.FC = () => {
           Módulos de Conhecimento ({modules.length})
         </h4>
 
-        <ScrollArea className="h-auto max-h-[600px]">
-          <div className="space-y-4 pr-4">
+        <div className="space-y-4">
             {modules.map((module, index) => (
               <Card 
                 key={module.id} 
@@ -710,7 +709,6 @@ export const KnowledgeModulesManager: React.FC = () => {
               </Card>
             ))}
           </div>
-        </ScrollArea>
       </div>
     </div>
   );
