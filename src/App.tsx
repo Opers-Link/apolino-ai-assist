@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
-import FloatingChat from "@/components/chat/FloatingChat";
+import AIAssistant from "@/components/chat/AIAssistant";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -35,8 +35,8 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-        {/* Chat flutuante disponível globalmente */}
-        <FloatingChat />
+        {/* Assistente AIA disponível globalmente */}
+        <AIAssistant />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
