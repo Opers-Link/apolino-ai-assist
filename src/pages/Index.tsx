@@ -1,4 +1,4 @@
-import FloatingChat from '@/components/chat/FloatingChat';
+import AIAssistant from '@/components/chat/AIAssistant';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
@@ -45,14 +45,14 @@ const Index = () => {
           
           <div className="mt-8 p-4 bg-apolar-gold/10 rounded-lg border border-apolar-gold/20">
             <p className="text-apolar-dark-gray text-sm">
-              💡 <strong>Dica:</strong> Use o chat do Apolino no canto inferior direito para tirar dúvidas sobre os sistemas!
+              💡 <strong>Dica:</strong> Clique no botão AIA no canto inferior direito para tirar dúvidas sobre os sistemas!
             </p>
           </div>
         </div>
       </div>
       
-      {/* Chat flutuante - disponível em todas as páginas */}
-      <FloatingChat />
+      {/* Assistente AIA - painel lateral */}
+      <AIAssistant />
     </>
   );
 };
