@@ -219,11 +219,12 @@ export const KnowledgeModulesManager: React.FC = () => {
       });
 
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no upload:', error);
+      const errorMessage = error?.message || error?.error_description || 'Não foi possível enviar o arquivo';
       toast({
         title: 'Erro no upload',
-        description: 'Não foi possível enviar o arquivo',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
