@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_logs: {
+        Row: {
+          completion_tokens: number | null
+          conversation_id: string | null
+          created_at: string | null
+          error_message: string | null
+          has_knowledge_modules: boolean | null
+          id: string
+          model: string | null
+          prompt_tokens: number | null
+          session_id: string | null
+          success: boolean | null
+          total_tokens: number | null
+        }
+        Insert: {
+          completion_tokens?: number | null
+          conversation_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          has_knowledge_modules?: boolean | null
+          id?: string
+          model?: string | null
+          prompt_tokens?: number | null
+          session_id?: string | null
+          success?: boolean | null
+          total_tokens?: number | null
+        }
+        Update: {
+          completion_tokens?: number | null
+          conversation_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          has_knowledge_modules?: boolean | null
+          id?: string
+          model?: string | null
+          prompt_tokens?: number | null
+          session_id?: string | null
+          success?: boolean | null
+          total_tokens?: number | null
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           agent_notes: string | null
