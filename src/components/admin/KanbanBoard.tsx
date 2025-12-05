@@ -271,7 +271,11 @@ export function KanbanBoard({ conversations, onConversationClick }: KanbanBoardP
       c.tags?.includes('humano_solicitado')
     );
     const inProgress = conversations.filter(c => c.status === 'in_progress');
-    const closed = conversations.filter(c => c.status === 'closed' || c.ended_at);
+    // ENCERRADO - APENAS conversas que passaram por atendimento humano e foram finalizadas
+    const closed = conversations.filter(c => 
+      c.status === 'closed' && 
+      (c.human_requested_at || c.assigned_to) // Passou por atendimento humano
+    );
 
     return [
       {
@@ -316,8 +320,9 @@ export function KanbanBoard({ conversations, onConversationClick }: KanbanBoardP
     }
   };
 
+  // Mostra badge "Inativa" apenas para conversas que expiraram por timeout sem solicitar humano
   const isInactive = (conversation: Conversation) => {
-    return conversation.status === 'closed' || !!conversation.ended_at;
+    return conversation.status === 'inactive';
   };
 
   const findColumnByConversationId = (id: string) => {
@@ -386,11 +391,13 @@ export function KanbanBoard({ conversations, onConversationClick }: KanbanBoardP
     
     if (!conversation || !sourceColumn) return;
 
-    // Block moving closed conversations
-    if (conversation.status === 'closed' || conversation.ended_at) {
+    // Block moving closed or inactive conversations
+    if (conversation.status === 'closed' || conversation.status === 'inactive') {
       toast({
         title: "Movimento não permitido",
-        description: "Atendimentos encerrados não podem ser movidos",
+        description: conversation.status === 'inactive' 
+          ? "Conversas inativas não podem ser movidas"
+          : "Atendimentos encerrados não podem ser movidos",
         variant: "destructive",
       });
       return;
