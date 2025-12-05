@@ -52,6 +52,7 @@ interface Stats {
   totalMessages: number;
   activeConversations: number;
   aiRequests: number;
+  avgAiRequestsPerConversation: number;
 }
 
 interface CategoryStats {
@@ -75,7 +76,8 @@ const Admin = () => {
     totalConversations: 0,
     totalMessages: 0,
     activeConversations: 0,
-    aiRequests: 0
+    aiRequests: 0,
+    avgAiRequestsPerConversation: 0
   });
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [tagStats, setTagStats] = useState<TagStats[]>([]);
@@ -182,11 +184,16 @@ const Admin = () => {
         const filteredMessages = messagesData.filter(m => filteredConversationIds.has(m.conversation_id));
         const totalMessages = filteredMessages.length;
 
+        const avgAiRequestsPerConversation = totalConversations > 0 
+          ? Math.round((aiRequestsCount || 0) / totalConversations * 10) / 10
+          : 0;
+
         setStats({
           totalConversations,
           totalMessages,
           activeConversations,
-          aiRequests: aiRequestsCount || 0
+          aiRequests: aiRequestsCount || 0,
+          avgAiRequestsPerConversation
         });
 
         // Calcular estatísticas por categoria
@@ -582,16 +589,16 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              {/* Card Purple - Requisições de IA */}
+              {/* Card Purple - Requisições por conversa */}
               <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-purple-50 border border-purple-200 hover:border-purple-300 hover:shadow-2xl hover:shadow-purple-100 hover:scale-[1.02] transition-all duration-300">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
                   <div>
                     <CardTitle className="text-sm font-medium text-purple-700/70 uppercase tracking-wide">
-                      Requisições de IA
+                      Requisições por conversa
                     </CardTitle>
                     <div className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-purple-700 bg-clip-text text-transparent mt-2">
-                      {stats.aiRequests}
+                      {stats.avgAiRequestsPerConversation}
                     </div>
                   </div>
                   <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
@@ -601,7 +608,31 @@ const Admin = () => {
                 <CardContent className="relative z-10">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-purple-600" />
-                    <p className="text-sm font-medium text-purple-600">Chamadas à API Gemini</p>
+                    <p className="text-sm font-medium text-purple-600">Média de chamadas à IA</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card Pink - Total de Requisições */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-pink-50 border border-pink-200 hover:border-pink-300 hover:shadow-2xl hover:shadow-pink-100 hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-pink-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+                  <div>
+                    <CardTitle className="text-sm font-medium text-pink-700/70 uppercase tracking-wide">
+                      Total de Requisições
+                    </CardTitle>
+                    <div className="text-4xl font-bold bg-gradient-to-br from-pink-600 to-pink-700 bg-clip-text text-transparent mt-2">
+                      {stats.aiRequests}
+                    </div>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
+                    <Sparkles className="h-7 w-7 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent className="relative z-10">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-pink-600" />
+                    <p className="text-sm font-medium text-pink-600">Chamadas à API Gemini no período</p>
                   </div>
                 </CardContent>
               </Card>
