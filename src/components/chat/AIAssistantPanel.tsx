@@ -25,6 +25,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const [sessionId, setSessionId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
@@ -43,14 +44,15 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
     }
   }, [isOpen, sessionId]);
 
-  const createConversation = async (sessionId: string) => {
+  const createConversation = async (sid: string): Promise<string | null> => {
+    setIsCreatingConversation(true);
     try {
       const userAgent = navigator.userAgent;
       
       const { data, error } = await supabase
         .from('chat_conversations')
         .insert({
-          session_id: sessionId,
+          session_id: sid,
           user_agent: userAgent,
           status: 'active',
           total_messages: 0
@@ -60,29 +62,43 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
 
       if (error) {
         console.error('Erro ao criar conversa:', error);
-        return;
+        return null;
       }
 
       if (data) {
         setConversationId(data.id);
+        return data.id;
       }
+      return null;
     } catch (error) {
       console.error('Erro ao criar conversa:', error);
+      return null;
+    } finally {
+      setIsCreatingConversation(false);
     }
   };
 
-  const saveMessage = async (content: string, isUser: boolean, messageOrder: number) => {
-    if (!conversationId) return;
+  const saveMessage = async (content: string, isUser: boolean, messageOrder: number, convId?: string) => {
+    const targetConversationId = convId || conversationId;
+    if (!targetConversationId) {
+      console.error('Erro: conversationId não disponível para salvar mensagem');
+      return;
+    }
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('chat_messages')
         .insert({
-          conversation_id: conversationId,
+          conversation_id: targetConversationId,
           content,
           is_user: isUser,
           message_order: messageOrder
         });
+
+      if (error) {
+        console.error('Erro ao inserir mensagem:', error);
+        return;
+      }
 
       await supabase
         .from('chat_conversations')
@@ -90,7 +106,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
           total_messages: messageOrder,
           status: 'active'
         })
-        .eq('id', conversationId);
+        .eq('id', targetConversationId);
     } catch (error) {
       console.error('Erro ao salvar mensagem:', error);
     }
@@ -242,7 +258,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
   }, [conversationId, aiDisabled]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || isCreatingConversation) return;
 
     if (messageCount >= MAX_MESSAGES) {
       toast({
@@ -251,6 +267,26 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Garantir que temos um conversationId válido
+    let currentConversationId = conversationId;
+    
+    if (!currentConversationId) {
+      // Se não tem conversa ainda, criar uma agora e aguardar
+      const newSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!sessionId) setSessionId(newSessionId);
+      
+      currentConversationId = await createConversation(newSessionId);
+      
+      if (!currentConversationId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível iniciar a conversa. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     const userMessage: Message = {
@@ -266,7 +302,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
     setMessageCount(prev => prev + 1);
 
     const currentMessageOrder = messageCount + 1;
-    await saveMessage(userMessage.content, true, currentMessageOrder);
+    await saveMessage(userMessage.content, true, currentMessageOrder, currentConversationId);
 
     try {
       const userContext = {
@@ -289,7 +325,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
         content: userMessage.content
       });
 
-      const response = await openaiService.chatCompletion(chatMessages, userContext, conversationId);
+      const response = await openaiService.chatCompletion(chatMessages, userContext, currentConversationId);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -299,7 +335,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
       };
 
       setMessages(prev => [...prev, botMessage]);
-      await saveMessage(botMessage.content, false, currentMessageOrder + 1);
+      await saveMessage(botMessage.content, false, currentMessageOrder + 1, currentConversationId);
       setMessageCount(prev => prev + 1);
       
     } catch (error) {
@@ -310,7 +346,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
-      await saveMessage(errorMessage.content, false, currentMessageOrder + 1);
+      await saveMessage(errorMessage.content, false, currentMessageOrder + 1, currentConversationId);
       setMessageCount(prev => prev + 1);
     } finally {
       setIsLoading(false);
@@ -457,6 +493,13 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
               <span>Aguardando atendente humano...</span>
             </div>
           )}
+
+          {isCreatingConversation && (
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-500 py-2 mb-2">
+              <span className="animate-spin">⏳</span>
+              <span>Iniciando conversa...</span>
+            </div>
+          )}
           
           <div className="relative bg-gray-50 rounded-2xl border border-gray-200 focus-within:border-apolar-blue/50 focus-within:ring-2 focus-within:ring-apolar-blue/10 transition-all">
             <Textarea
@@ -465,13 +508,13 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Pedir para AIA"
-              disabled={isLoading || aiDisabled}
+              disabled={isLoading || aiDisabled || isCreatingConversation}
               className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
               rows={1}
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading || aiDisabled}
+              disabled={!inputValue.trim() || isLoading || aiDisabled || isCreatingConversation}
               size="icon"
               className="absolute right-2 bottom-2 h-8 w-8 rounded-full bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white transition-colors disabled:opacity-40"
             >
