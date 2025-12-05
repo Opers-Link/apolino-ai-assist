@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.check-sla]
 verify_jwt = false
+
+[functions.extract-pdf-text]
+verify_jwt = false

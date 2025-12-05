@@ -125,6 +125,101 @@ serve(async (req) => {
   }
 });
 
+// Buscar módulos de conhecimento com texto extraído
+async function getKnowledgeModules(supabase: any) {
+  try {
+    // Buscar módulos com arquivos
+    const { data: modules, error: modulesError } = await supabase
+      .from('knowledge_modules')
+      .select(`
+        id,
+        name,
+        variable_name,
+        version,
+        description
+      `)
+      .order('display_order');
+
+    if (modulesError) {
+      console.error('Error fetching modules:', modulesError);
+      return { modules: [], config: {} };
+    }
+
+    // Buscar arquivos com texto extraído para cada módulo
+    const modulesWithContent = [];
+    for (const module of modules || []) {
+      const { data: files } = await supabase
+        .from('knowledge_module_files')
+        .select('file_name, extracted_text')
+        .eq('module_id', module.id)
+        .order('uploaded_at', { ascending: false });
+
+      modulesWithContent.push({
+        ...module,
+        files: files || []
+      });
+    }
+
+    // Buscar configuração global
+    const { data: configData } = await supabase
+      .from('knowledge_config')
+      .select('key, value');
+
+    const config: Record<string, string> = {};
+    (configData || []).forEach((item: any) => {
+      config[item.key] = item.value;
+    });
+
+    return { modules: modulesWithContent, config };
+  } catch (error) {
+    console.error('Error in getKnowledgeModules:', error);
+    return { modules: [], config: {} };
+  }
+}
+
+// Gerar índice de módulos
+function buildModuleIndex(modules: any[]): string {
+  if (!modules.length) return '[Nenhum módulo de conhecimento configurado]';
+
+  let index = '📚 **ÍNDICE DE MÓDULOS DE CONHECIMENTO**\n\n';
+  index += '| # | Módulo | Variável | Versão | Documentos |\n';
+  index += '|---|--------|----------|--------|------------|\n';
+
+  for (let i = 0; i < modules.length; i++) {
+    const mod = modules[i];
+    const fileCount = mod.files?.length || 0;
+    const hasContent = mod.files?.some((f: any) => f.extracted_text) || false;
+    const status = hasContent ? '✅' : (fileCount > 0 ? '⏳' : '❌');
+    index += `| ${i + 1} | ${mod.name} | {{${mod.variable_name}}} | v${mod.version || '1.0'} | ${fileCount} ${status} |\n`;
+  }
+
+  return index;
+}
+
+// Gerar conteúdo de um módulo
+function buildModuleContent(module: any): string {
+  if (!module.files?.length) {
+    return `[Módulo ${module.name}: Nenhum documento disponível]`;
+  }
+
+  const filesWithText = module.files.filter((f: any) => f.extracted_text);
+  
+  if (!filesWithText.length) {
+    return `[Módulo ${module.name}: Documentos em processamento - ${module.files.length} arquivo(s)]`;
+  }
+
+  let content = `\n═══════════════════════════════════════════════════════\n`;
+  content += `📘 ${module.name.toUpperCase()} - VERSÃO ${module.version || '1.0'}\n`;
+  content += `═══════════════════════════════════════════════════════\n\n`;
+
+  for (const file of filesWithText) {
+    content += `--- ${file.file_name} ---\n\n`;
+    content += file.extracted_text + '\n\n';
+  }
+
+  return content;
+}
+
 async function getSystemPrompt(supabase: any, userContext?: UserContext, dbContext?: string): Promise<string> {
   try {
     // Buscar prompt customizado do banco
@@ -144,6 +239,25 @@ async function getSystemPrompt(supabase: any, userContext?: UserContext, dbConte
     
     // Substituir variáveis dinâmicas
     let customPrompt = promptData.content;
+    
+    // Buscar módulos de conhecimento
+    const { modules, config } = await getKnowledgeModules(supabase);
+    console.log(`Loaded ${modules.length} knowledge modules`);
+    
+    // Substituir {{VERSAO_MODULOS}}
+    const globalVersion = config['VERSAO_MODULOS'] || '1.0';
+    customPrompt = customPrompt.replace(/\{\{VERSAO_MODULOS\}\}/g, globalVersion);
+    
+    // Substituir {{INDICE_DE_MODULOS}}
+    const moduleIndex = buildModuleIndex(modules);
+    customPrompt = customPrompt.replace(/\{\{INDICE_DE_MODULOS\}\}/g, moduleIndex);
+    
+    // Substituir variáveis de cada módulo (ex: {{MODULO_CRM_SALES}})
+    for (const module of modules) {
+      const moduleContent = buildModuleContent(module);
+      const regex = new RegExp(`\\{\\{${module.variable_name}\\}\\}`, 'g');
+      customPrompt = customPrompt.replace(regex, moduleContent);
+    }
     
     // Substituir {{database_context}}
     if (dbContext) {

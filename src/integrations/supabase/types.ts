@@ -147,6 +147,7 @@ export type Database = {
       }
       knowledge_module_files: {
         Row: {
+          extracted_text: string | null
           file_name: string
           file_path: string
           file_size: number | null
@@ -156,6 +157,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          extracted_text?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
@@ -165,6 +167,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          extracted_text?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
