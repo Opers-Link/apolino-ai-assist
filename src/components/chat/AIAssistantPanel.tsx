@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Menu, Send, Sparkles } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -35,6 +35,11 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
   
   const openaiService = new OpenAIService();
   const MAX_MESSAGES = 30;
+  const MOVIDESK_URL = 'https://apolar.movidesk.com/'; // URL do Movidesk
+
+  const handleOpenTicket = () => {
+    window.open(MOVIDESK_URL, '_blank');
+  };
 
   useEffect(() => {
     if (isOpen && !sessionId) {
@@ -418,9 +423,30 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
                   Encontre informações
                 </span>
               </h2>
-              <p className="text-sm text-gray-500 text-center max-w-xs">
+              <p className="text-sm text-gray-500 text-center max-w-xs mb-6">
                 Pergunte sobre sistemas, procedimentos ou processos da Apolar
               </p>
+              
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+                <Button
+                  onClick={handleOpenTicket}
+                  variant="outline"
+                  className="flex-1 gap-2 border-apolar-blue/30 text-apolar-blue hover:bg-apolar-blue/5"
+                >
+                  <Ticket className="h-4 w-4" />
+                  Abrir ticket
+                </Button>
+                <Button
+                  onClick={handleRequestHumanHelp}
+                  variant="outline"
+                  className="flex-1 gap-2 border-apolar-gold/50 text-apolar-gold-dark hover:bg-apolar-gold/10"
+                  disabled={aiDisabled}
+                >
+                  <Headphones className="h-4 w-4" />
+                  Solicitar atendimento
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="py-6 space-y-6">
@@ -522,16 +548,26 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
             </Button>
           </div>
           
-          <p className="text-[10px] text-gray-400 text-center mt-3">
-            A AIA pode cometer erros. Por isso, cheque as respostas.{' '}
-            {!aiDisabled && messageCount >= 5 && (
-              <button
-                onClick={handleRequestHumanHelp}
-                className="text-apolar-blue hover:underline"
-              >
-                Falar com atendente
-              </button>
-            )}
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <button
+              onClick={handleOpenTicket}
+              className="text-[10px] text-gray-500 hover:text-apolar-blue hover:underline flex items-center gap-1"
+            >
+              <Ticket className="h-3 w-3" />
+              Abrir ticket
+            </button>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={handleRequestHumanHelp}
+              disabled={aiDisabled}
+              className="text-[10px] text-gray-500 hover:text-apolar-gold-dark hover:underline flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Headphones className="h-3 w-3" />
+              Solicitar atendimento
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 text-center mt-2">
+            A AIA pode cometer erros. Por isso, cheque as respostas.
           </p>
         </div>
       </div>
