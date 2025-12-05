@@ -423,30 +423,9 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
                   Encontre informações
                 </span>
               </h2>
-              <p className="text-sm text-gray-500 text-center max-w-xs mb-6">
+              <p className="text-sm text-gray-500 text-center max-w-xs">
                 Pergunte sobre sistemas, procedimentos ou processos da Apolar
               </p>
-              
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-                <Button
-                  onClick={handleOpenTicket}
-                  variant="outline"
-                  className="flex-1 gap-2 border-apolar-blue/30 text-apolar-blue hover:bg-apolar-blue/5"
-                >
-                  <Ticket className="h-4 w-4" />
-                  Abrir ticket
-                </Button>
-                <Button
-                  onClick={handleRequestHumanHelp}
-                  variant="outline"
-                  className="flex-1 gap-2 border-apolar-gold/50 text-apolar-gold-dark hover:bg-apolar-gold/10"
-                  disabled={aiDisabled}
-                >
-                  <Headphones className="h-4 w-4" />
-                  Solicitar atendimento
-                </Button>
-              </div>
             </div>
           ) : (
             <div className="py-6 space-y-6">
@@ -548,25 +527,30 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
             </Button>
           </div>
           
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <button
+          {/* CTAs destacados */}
+          <div className="flex gap-2 mt-4">
+            <Button
               onClick={handleOpenTicket}
-              className="text-[10px] text-gray-500 hover:text-apolar-blue hover:underline flex items-center gap-1"
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 border-apolar-blue/40 text-apolar-blue hover:bg-apolar-blue hover:text-white transition-all"
             >
-              <Ticket className="h-3 w-3" />
+              <Ticket className="h-4 w-4" />
               Abrir ticket
-            </button>
-            <span className="text-gray-300">|</span>
-            <button
+            </Button>
+            <Button
               onClick={handleRequestHumanHelp}
+              variant="outline"
+              size="sm"
               disabled={aiDisabled}
-              className="text-[10px] text-gray-500 hover:text-apolar-gold-dark hover:underline flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 gap-2 border-apolar-gold/50 text-apolar-gold-dark hover:bg-apolar-gold hover:text-white transition-all disabled:opacity-50"
             >
-              <Headphones className="h-3 w-3" />
+              <Headphones className="h-4 w-4" />
               Solicitar atendimento
-            </button>
+            </Button>
           </div>
-          <p className="text-[10px] text-gray-400 text-center mt-2">
+          
+          <p className="text-[10px] text-gray-400 text-center mt-3">
             A AIA pode cometer erros. Por isso, cheque as respostas.
           </p>
         </div>
