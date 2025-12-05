@@ -30,11 +30,13 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
   const [sessionId, setSessionId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
   const [aiDisabled, setAiDisabled] = useState(false);
+  const [lastActivityTime, setLastActivityTime] = useState<Date>(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const openaiService = new OpenAIService();
   const MAX_MESSAGES = 30;
+  const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
   const MOVIDESK_URL = 'https://apolar.movidesk.com/'; // URL do Movidesk
 
   const handleOpenTicket = () => {
@@ -216,6 +218,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
             });
             
             setMessageCount(prev => Math.max(prev, newMessage.message_order));
+            setLastActivityTime(new Date()); // Resetar timer ao receber mensagem do agente
           }
         }
       )
@@ -262,6 +265,47 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
     return () => clearInterval(interval);
   }, [conversationId, aiDisabled]);
 
+  // Verificar inatividade a cada 30 segundos
+  useEffect(() => {
+    if (!conversationId || aiDisabled) return;
+
+    const checkInactivity = async () => {
+      const now = new Date();
+      const timeSinceLastActivity = now.getTime() - lastActivityTime.getTime();
+
+      if (timeSinceLastActivity >= INACTIVITY_TIMEOUT_MS) {
+        // Verificar se NÃO solicitou atendimento humano
+        const { data } = await supabase
+          .from('chat_conversations')
+          .select('status, human_requested_at')
+          .eq('id', conversationId)
+          .single();
+
+        // Só inativar se NÃO solicitou humano
+        if (data && !data.human_requested_at && data.status !== 'needs_help' && data.status !== 'in_progress') {
+          await supabase
+            .from('chat_conversations')
+            .update({
+              status: 'inactive'
+              // NÃO define ended_at - reservado para atendimentos humanos finalizados
+            })
+            .eq('id', conversationId);
+
+          toast({
+            title: "Conversa encerrada",
+            description: "Sua conversa foi encerrada por inatividade. Inicie uma nova conversa se precisar de ajuda.",
+          });
+
+          handleClose();
+        }
+      }
+    };
+
+    const interval = setInterval(checkInactivity, 30000); // Verificar a cada 30 segundos
+    
+    return () => clearInterval(interval);
+  }, [conversationId, lastActivityTime, aiDisabled]);
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || isCreatingConversation) return;
 
@@ -305,6 +349,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
     setInputValue('');
     setIsLoading(true);
     setMessageCount(prev => prev + 1);
+    setLastActivityTime(new Date()); // Resetar timer de inatividade
 
     const currentMessageOrder = messageCount + 1;
     await saveMessage(userMessage.content, true, currentMessageOrder, currentConversationId);
@@ -342,6 +387,7 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
       setMessages(prev => [...prev, botMessage]);
       await saveMessage(botMessage.content, false, currentMessageOrder + 1, currentConversationId);
       setMessageCount(prev => prev + 1);
+      setLastActivityTime(new Date()); // Resetar timer ao receber resposta
       
     } catch (error) {
       const errorMessage: Message = {
