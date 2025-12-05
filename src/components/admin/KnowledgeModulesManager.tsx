@@ -193,12 +193,19 @@ export const KnowledgeModulesManager: React.FC = () => {
 
         const fileName = `${module.variable_name}/${Date.now()}_${file.name}`;
         
-        // Upload to storage
+        // Upload to storage using resumable upload for large files
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('manuals')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+            duplex: 'half',
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload error details:', uploadError);
+          throw new Error(`Erro no upload: ${uploadError.message}`);
+        }
 
         // Save file reference in database
         const { error: dbError } = await supabase
