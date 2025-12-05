@@ -106,6 +106,25 @@ serve(async (req) => {
     
     console.log('Lovable AI response received:', aiResponse.substring(0, 100) + '...');
 
+    // Buscar módulos para verificar se foram usados
+    const { modules } = await getKnowledgeModules(supabase);
+
+    // Registrar uso de IA no banco
+    const { error: logError } = await supabase.from('ai_usage_logs').insert({
+      conversation_id: conversationId || null,
+      session_id: userContext?.userId || null,
+      prompt_tokens: data.usage?.prompt_tokens || null,
+      completion_tokens: data.usage?.completion_tokens || null,
+      total_tokens: data.usage?.total_tokens || null,
+      model: 'google/gemini-2.5-flash',
+      has_knowledge_modules: modules.length > 0,
+      success: true
+    });
+
+    if (logError) {
+      console.error('Erro ao registrar uso de IA:', logError);
+    }
+
     // Salvar mensagem do usuário e resposta da IA no banco
     if (conversationId) {
       await saveMessages(supabase, conversationId, messages[messages.length - 1].content, aiResponse);
@@ -118,6 +137,23 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in chat-with-ai function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Registrar erro de uso de IA
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      await supabase.from('ai_usage_logs').insert({
+        session_id: null,
+        model: 'google/gemini-2.5-flash',
+        success: false,
+        error_message: errorMessage
+      });
+    } catch (logError) {
+      console.error('Erro ao registrar falha de uso de IA:', logError);
+    }
+    
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

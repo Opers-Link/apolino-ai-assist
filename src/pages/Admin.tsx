@@ -7,7 +7,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import { ConversationDetailModal } from '@/components/admin/ConversationDetailModal';
 import { UserManagement } from '@/components/admin/UserManagement';
-import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save, Sparkles, BookOpen } from 'lucide-react';
+import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save, Sparkles, BookOpen, Brain, Zap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PromptEditor } from '@/components/admin/PromptEditor';
 import { KnowledgeModulesManager } from '@/components/admin/KnowledgeModulesManager';
@@ -51,7 +51,7 @@ interface Stats {
   totalConversations: number;
   totalMessages: number;
   activeConversations: number;
-  avgMessagesPerConversation: number;
+  aiRequests: number;
 }
 
 interface CategoryStats {
@@ -75,7 +75,7 @@ const Admin = () => {
     totalConversations: 0,
     totalMessages: 0,
     activeConversations: 0,
-    avgMessagesPerConversation: 0
+    aiRequests: 0
   });
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [tagStats, setTagStats] = useState<TagStats[]>([]);
@@ -153,6 +153,19 @@ const Admin = () => {
         .from('chat_messages')
         .select('*');
 
+      // Buscar requisições de IA
+      let aiQuery = supabase
+        .from('ai_usage_logs')
+        .select('*', { count: 'exact' });
+      
+      if (startDate && endDate) {
+        aiQuery = aiQuery
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
+      }
+      
+      const { count: aiRequestsCount } = await aiQuery;
+
       if (conversationsData && messagesData) {
         // Filter by date range if provided
         const filteredConversations = startDate && endDate
@@ -168,13 +181,12 @@ const Admin = () => {
         const filteredConversationIds = new Set(filteredConversations.map(c => c.id));
         const filteredMessages = messagesData.filter(m => filteredConversationIds.has(m.conversation_id));
         const totalMessages = filteredMessages.length;
-        const avgMessagesPerConversation = totalConversations > 0 ? Math.round(totalMessages / totalConversations) : 0;
 
         setStats({
           totalConversations,
           totalMessages,
           activeConversations,
-          avgMessagesPerConversation
+          aiRequests: aiRequestsCount || 0
         });
 
         // Calcular estatísticas por categoria
@@ -570,24 +582,27 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              {/* Card Red - Média */}
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-apolar-red/5 border border-apolar-red/20 hover:border-apolar-red/40 hover:shadow-2xl hover:shadow-apolar-red/10 hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-apolar-red/5 rounded-full blur-2xl group-hover:bg-apolar-red/10 transition-all" />
+              {/* Card Purple - Requisições de IA */}
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-purple-50 border border-purple-200 hover:border-purple-300 hover:shadow-2xl hover:shadow-purple-100 hover:scale-[1.02] transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
                   <div>
-                    <CardTitle className="text-sm font-medium text-apolar-red/70 uppercase tracking-wide">
-                      Média de Mensagens
+                    <CardTitle className="text-sm font-medium text-purple-700/70 uppercase tracking-wide">
+                      Requisições de IA
                     </CardTitle>
-                    <div className="text-4xl font-bold bg-gradient-to-br from-apolar-red to-red-700 bg-clip-text text-transparent mt-2">
-                      {stats.avgMessagesPerConversation}
+                    <div className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-purple-700 bg-clip-text text-transparent mt-2">
+                      {stats.aiRequests}
                     </div>
                   </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-apolar-red to-red-600 flex items-center justify-center shadow-lg shadow-apolar-red/30 group-hover:scale-110 transition-transform">
-                    <Clock className="h-7 w-7 text-white" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                    <Brain className="h-7 w-7 text-white" />
                   </div>
                 </CardHeader>
                 <CardContent className="relative z-10">
-                  <p className="text-sm font-medium text-apolar-red/70">Por conversa</p>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-purple-600" />
+                    <p className="text-sm font-medium text-purple-600">Chamadas à API Gemini</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
