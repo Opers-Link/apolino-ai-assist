@@ -63,6 +63,7 @@ interface ModuleFile {
   file_path: string;
   file_size?: number;
   uploaded_at: string;
+  extracted_text?: string | null;
 }
 
 interface KnowledgeConfig {
@@ -117,7 +118,7 @@ export const KnowledgeModulesManager: React.FC = () => {
       for (const module of modulesData || []) {
         const { data: filesData } = await supabase
           .from('knowledge_module_files')
-          .select('*')
+          .select('id, module_id, file_name, file_path, file_size, uploaded_at, extracted_text')
           .eq('module_id', module.id)
           .order('uploaded_at', { ascending: false });
         
@@ -230,11 +231,41 @@ export const KnowledgeModulesManager: React.FC = () => {
           });
 
         if (dbError) throw dbError;
+
+        // Get the file ID we just inserted
+        const { data: insertedFile } = await supabase
+          .from('knowledge_module_files')
+          .select('id')
+          .eq('file_path', uploadData.path)
+          .single();
+
+        // Trigger PDF text extraction in background
+        if (insertedFile?.id) {
+          console.log('Triggering PDF text extraction for file:', insertedFile.id);
+          supabase.functions.invoke('extract-pdf-text', {
+            body: { filePath: uploadData.path, fileId: insertedFile.id }
+          }).then((result) => {
+            if (result.error) {
+              console.error('Error extracting PDF text:', result.error);
+              toast({
+                title: 'Aviso',
+                description: 'O texto do PDF será extraído em segundo plano',
+              });
+            } else {
+              console.log('PDF text extraction completed:', result.data);
+              toast({
+                title: 'Texto extraído',
+                description: 'O conteúdo do PDF foi processado pela IA',
+              });
+              loadData(); // Reload to show extraction status
+            }
+          });
+        }
       }
 
       toast({
         title: 'Upload concluído',
-        description: 'Os arquivos foram enviados com sucesso',
+        description: 'Os arquivos foram enviados. Aguarde a extração do texto...',
       });
 
       loadData();
@@ -695,6 +726,17 @@ export const KnowledgeModulesManager: React.FC = () => {
                               <span className="text-xs text-slate-400">
                                 {formatFileSize(file.file_size)}
                               </span>
+                              {file.extracted_text ? (
+                                <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 text-xs">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Texto extraído
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-xs">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Aguardando extração
+                                </Badge>
+                              )}
                             </div>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

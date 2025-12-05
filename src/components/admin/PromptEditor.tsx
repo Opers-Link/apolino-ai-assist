@@ -189,6 +189,13 @@ export const PromptEditor = () => {
     { name: '{{database_context}}', description: 'Estatísticas e contexto do banco de dados' },
     { name: '{{user_context}}', description: 'Informações do usuário atual (ID, sistema, permissões)' },
     { name: '{{user_name}}', description: 'Nome do usuário atual' },
+    { name: '{{VERSAO_MODULOS}}', description: 'Versão global dos módulos de conhecimento' },
+    { name: '{{INDICE_DE_MODULOS}}', description: 'Tabela com todos os módulos e seus documentos' },
+    { name: '{{MODULO_CRM_SALES}}', description: 'Conteúdo do módulo CRM Sales' },
+    { name: '{{MODULO_NET_LOCACAO}}', description: 'Conteúdo do módulo NET Locação' },
+    { name: '{{MODULO_NET_VENDAS}}', description: 'Conteúdo do módulo NET Vendas' },
+    { name: '{{MODULO_AREA_DO_CLIENTE}}', description: 'Conteúdo do módulo Área do Cliente' },
+    { name: '{{MODULO_TRANSVERSAL}}', description: 'Conteúdo do módulo Transversal' },
   ];
 
   if (loading) {
