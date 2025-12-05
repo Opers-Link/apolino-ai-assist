@@ -72,6 +72,17 @@ interface KnowledgeConfig {
   updated_at: string;
 }
 
+// Sanitiza nomes de arquivos para upload no Supabase Storage
+const sanitizeFileName = (fileName: string): string => {
+  return fileName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/\s+/g, '_')            // Espaços → underscores
+    .replace(/[^a-zA-Z0-9_.-]/g, '') // Remove caracteres especiais
+    .replace(/_+/g, '_')             // Remove underscores duplicados
+    .replace(/^_+|_+$/g, '');        // Remove underscores início/fim
+};
+
 export const KnowledgeModulesManager: React.FC = () => {
   const [modules, setModules] = useState<KnowledgeModule[]>([]);
   const [config, setConfig] = useState<Record<string, KnowledgeConfig>>({});
@@ -191,7 +202,8 @@ export const KnowledgeModulesManager: React.FC = () => {
           continue;
         }
 
-        const fileName = `${module.variable_name}/${Date.now()}_${file.name}`;
+        const sanitizedName = sanitizeFileName(file.name);
+        const fileName = `${module.variable_name}/${Date.now()}_${sanitizedName}`;
         
         // Upload to storage using resumable upload for large files
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -207,12 +219,12 @@ export const KnowledgeModulesManager: React.FC = () => {
           throw new Error(`Erro no upload: ${uploadError.message}`);
         }
 
-        // Save file reference in database
+        // Save file reference in database with sanitized name
         const { error: dbError } = await supabase
           .from('knowledge_module_files')
           .insert({
             module_id: moduleId,
-            file_name: file.name,
+            file_name: sanitizedName,
             file_path: uploadData.path,
             file_size: file.size,
           });
