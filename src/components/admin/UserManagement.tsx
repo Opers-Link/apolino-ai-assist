@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { UserCircle, Mail, Phone, Edit, Search, UserPlus, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { UserCircle, Mail, Phone, Edit, Search, UserPlus, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Users } from 'lucide-react';
 
 interface User {
   id: string;
@@ -29,6 +29,7 @@ export function UserManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'gerente' | 'agente' | 'user'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [editForm, setEditForm] = useState({
@@ -242,10 +243,17 @@ export function UserManagement() {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = 
+      roleFilter === 'all' || 
+      user.user_roles[0]?.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
 
   // Paginação
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
@@ -256,7 +264,7 @@ export function UserManagement() {
   // Reset para página 1 quando filtrar ou mudar itens por página
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, itemsPerPage]);
+  }, [searchTerm, itemsPerPage, roleFilter]);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -294,6 +302,51 @@ export function UserManagement() {
                 className="pl-9"
               />
             </div>
+          </div>
+
+          {/* Filtros por Tipo de Acesso */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button
+              variant={roleFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('all')}
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Todos: {users.length}
+            </Button>
+            <Button
+              variant={roleFilter === 'admin' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('admin')}
+              className={roleFilter !== 'admin' ? 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100' : 'bg-red-600 hover:bg-red-700'}
+            >
+              Admin: {users.filter(u => u.user_roles[0]?.role === 'admin').length}
+            </Button>
+            <Button
+              variant={roleFilter === 'gerente' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('gerente')}
+              className={roleFilter !== 'gerente' ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100' : 'bg-blue-600 hover:bg-blue-700'}
+            >
+              Gerente: {users.filter(u => u.user_roles[0]?.role === 'gerente').length}
+            </Button>
+            <Button
+              variant={roleFilter === 'agente' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('agente')}
+              className={roleFilter !== 'agente' ? 'bg-green-50 text-green-800 border-green-300 hover:bg-green-100' : 'bg-green-600 hover:bg-green-700'}
+            >
+              Agente: {users.filter(u => u.user_roles[0]?.role === 'agente').length}
+            </Button>
+            <Button
+              variant={roleFilter === 'user' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('user')}
+              className={roleFilter !== 'user' ? 'bg-gray-50 text-gray-800 border-gray-300 hover:bg-gray-100' : 'bg-gray-600 hover:bg-gray-700'}
+            >
+              Usuário: {users.filter(u => u.user_roles[0]?.role === 'user' || !u.user_roles[0]?.role).length}
+            </Button>
           </div>
 
           {/* Tabela */}
@@ -441,21 +494,6 @@ export function UserManagement() {
             </div>
           </div>
 
-          {/* Estatísticas */}
-          <div className="mt-4 flex flex-wrap gap-4">
-            <Badge variant="outline" className="text-sm">
-              Total: {users.length} usuários
-            </Badge>
-            <Badge variant="outline" className={getRoleBadgeColor('admin')}>
-              Admins: {users.filter(u => u.user_roles[0]?.role === 'admin').length}
-            </Badge>
-            <Badge variant="outline" className={getRoleBadgeColor('gerente')}>
-              Gerentes: {users.filter(u => u.user_roles[0]?.role === 'gerente').length}
-            </Badge>
-            <Badge variant="outline" className={getRoleBadgeColor('agente')}>
-              Agentes: {users.filter(u => u.user_roles[0]?.role === 'agente').length}
-            </Badge>
-          </div>
         </CardContent>
       </Card>
 
