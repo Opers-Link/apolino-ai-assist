@@ -454,48 +454,45 @@ export function ConversationDetailModal({
           </div>
         </ScrollArea>
         
-        {/* Campo de Notas do Agente - oculto para atendimentos encerrados */}
-        {!isClosed && (
-          <div className="space-y-2 border-t pt-3">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Notas Internas do Agente
-            </Label>
-            <Textarea
-              value={agentNotes}
-              onChange={(e) => setAgentNotes(e.target.value)}
-              placeholder="Adicione notas sobre esta conversa (contexto, observações, próximos passos...)&#10;&#10;Estas notas são internas e não são enviadas ao usuário."
-              className="min-h-[80px] resize-none"
-              disabled={!isAssignedToMe}
-            />
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={handleSaveNotes}
-              disabled={!isAssignedToMe}
-              className="w-full"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Salvar Notas
-            </Button>
-          </div>
-        )}
+        {/* Campo de Notas do Agente */}
+        <div className="space-y-2 border-t pt-3">
+          <Label className="text-sm font-medium flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Notas Internas do Agente
+            {isClosed && <Badge variant="secondary" className="text-xs">Somente leitura</Badge>}
+          </Label>
+          <Textarea
+            value={agentNotes}
+            onChange={(e) => setAgentNotes(e.target.value)}
+            placeholder="Adicione notas sobre esta conversa (contexto, observações, próximos passos...)&#10;&#10;Estas notas são internas e não são enviadas ao usuário."
+            className="min-h-[80px] resize-none"
+            disabled={!isAssignedToMe || isClosed}
+          />
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={handleSaveNotes}
+            disabled={!isAssignedToMe || isClosed}
+            className="w-full"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Salvar Notas
+          </Button>
+        </div>
 
-        {/* Input de mensagem - oculto para atendimentos encerrados */}
-        {isAssignedToMe && !isClosed && (
-          <div className="flex gap-2 border-t pt-3">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Digite sua mensagem..."
-              disabled={loading}
-            />
-            <Button onClick={handleSendMessage} disabled={loading || !newMessage.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {/* Input de mensagem */}
+        <div className="flex gap-2 border-t pt-3">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && !isClosed && handleSendMessage()}
+            placeholder={isClosed ? "Atendimento encerrado" : "Digite sua mensagem..."}
+            disabled={loading || isClosed || !isAssignedToMe}
+          />
+          <Button onClick={handleSendMessage} disabled={loading || !newMessage.trim() || isClosed || !isAssignedToMe}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
