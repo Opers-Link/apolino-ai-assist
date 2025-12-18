@@ -21,7 +21,9 @@ import {
   CheckCircle,
   BookOpen,
   Layers,
-  Settings2
+  Settings2,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import {
   Dialog,
@@ -95,7 +97,49 @@ export const KnowledgeModulesManager: React.FC = () => {
   const [newModuleVariable, setNewModuleVariable] = useState('');
   const [globalVersion, setGlobalVersion] = useState('1.0');
   const [moduleIndex, setModuleIndex] = useState('');
+  const [extractingFiles, setExtractingFiles] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const retryExtraction = async (fileId: string, filePath: string, fileName: string) => {
+    setExtractingFiles(prev => new Set(prev).add(fileId));
+    
+    try {
+      console.log('Retrying PDF text extraction for file:', fileId);
+      
+      const result = await supabase.functions.invoke('extract-pdf-text', {
+        body: { filePath, fileId }
+      });
+
+      if (result.error) {
+        console.error('Error extracting PDF text:', result.error);
+        toast({
+          title: 'Erro na extração',
+          description: result.error.message || 'Não foi possível extrair o texto do PDF',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('PDF text extraction completed:', result.data);
+        toast({
+          title: 'Texto extraído',
+          description: `O conteúdo de "${fileName}" foi processado com sucesso`,
+        });
+        loadData();
+      }
+    } catch (error: any) {
+      console.error('Error retrying extraction:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao processar o PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setExtractingFiles(prev => {
+        const next = new Set(prev);
+        next.delete(fileId);
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -738,7 +782,24 @@ export const KnowledgeModulesManager: React.FC = () => {
                                 </Badge>
                               )}
                             </div>
-                            <AlertDialog>
+                            <div className="flex items-center gap-1">
+                              {!file.extracted_text && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={() => retryExtraction(file.id, file.file_path, file.file_name)}
+                                  disabled={extractingFiles.has(file.id)}
+                                  title="Reprocessar extração de texto"
+                                >
+                                  {extractingFiles.has(file.id) ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                              <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
                                   <Trash2 className="h-4 w-4" />
@@ -762,6 +823,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                            </div>
                           </div>
                         ))}
                       </div>
