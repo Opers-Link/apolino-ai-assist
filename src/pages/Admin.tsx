@@ -973,8 +973,8 @@ const Admin = () => {
                     </div>
                   )}
 
-                  {/* Campo de resposta (apenas se for o agente responsável) */}
-                  {selectedConversation?.assigned_to === currentUser?.id && (
+                  {/* Campo de resposta (visível para agentes quando há mensagens) */}
+                  {selectedConversation && canManageConversations(currentUser) && messages.length > 0 && (
                     <div className="space-y-2 border-t pt-4">
                       <Label className="text-sm font-medium flex items-center gap-2">
                         <MessageSquare className="h-4 w-4" />
