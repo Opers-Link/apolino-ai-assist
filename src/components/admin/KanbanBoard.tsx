@@ -267,15 +267,11 @@ export function KanbanBoard({ conversations, onConversationClick }: KanbanBoardP
   const columns = useMemo<KanbanColumn[]>(() => {
     const allConversations = conversations;
     const needsHelp = conversations.filter(c => 
-      c.status === 'needs_help' || 
-      c.tags?.includes('humano_solicitado')
+      (c.status === 'needs_help' || c.tags?.includes('humano_solicitado')) &&
+      c.status !== 'closed'
     );
     const inProgress = conversations.filter(c => c.status === 'in_progress');
-    // ENCERRADO - APENAS conversas que passaram por atendimento humano e foram finalizadas
-    const closed = conversations.filter(c => 
-      c.status === 'closed' && 
-      (c.human_requested_at || c.assigned_to) // Passou por atendimento humano
-    );
+    const closed = conversations.filter(c => c.status === 'closed');
 
     return [
       {
