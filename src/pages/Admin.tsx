@@ -792,7 +792,8 @@ const Admin = () => {
 
   const renderConversations = () => (
     <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <DateRangeFilter onFilterChange={handleDateFilterChange} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Lista de Conversas */}
               <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/20">
                 <CardHeader>
