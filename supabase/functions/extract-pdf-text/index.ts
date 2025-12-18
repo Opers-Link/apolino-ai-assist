@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Função segura para converter ArrayBuffer para Base64 (funciona com arquivos grandes)
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000; // 32KB chunks para evitar stack overflow
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+  
+  return btoa(binary);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -34,9 +48,20 @@ serve(async (req) => {
       throw new Error(`Erro ao baixar PDF: ${downloadError.message}`);
     }
 
-    // Convert blob to base64
+    // Check file size (limit to 15MB for safety)
     const arrayBuffer = await fileData.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const fileSizeMB = arrayBuffer.byteLength / (1024 * 1024);
+    
+    console.log(`PDF size: ${fileSizeMB.toFixed(2)} MB`);
+    
+    if (fileSizeMB > 15) {
+      throw new Error(`Arquivo muito grande (${fileSizeMB.toFixed(1)} MB). Limite: 15MB`);
+    }
+
+    // Convert blob to base64 using safe chunked method
+    console.log('Converting PDF to base64...');
+    const base64 = arrayBufferToBase64(arrayBuffer);
+    console.log(`Base64 length: ${base64.length} characters`);
 
     // Use Lovable AI (Gemini) to extract text from PDF
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
