@@ -19,9 +19,10 @@ interface Message {
 interface AIAssistantPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  isEmbedded?: boolean;
 }
 
-const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
+const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -418,28 +419,35 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
 
   return (
     <>
-      {/* Overlay */}
-      <div 
-        className={cn(
-          "fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300",
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-        onClick={handleClose}
-      />
+      {/* Overlay - hidden when embedded */}
+      {!isEmbedded && (
+        <div 
+          className={cn(
+            "fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300",
+            isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+          onClick={handleClose}
+        />
+      )}
       
       {/* Panel */}
       <div
         className={cn(
-          "fixed top-0 right-0 h-full w-full sm:w-[420px] md:w-[480px] bg-white z-50 shadow-2xl transition-transform duration-300 ease-out flex flex-col",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          "bg-white flex flex-col",
+          isEmbedded 
+            ? "h-full w-full" 
+            : "fixed top-0 right-0 h-full w-full sm:w-[420px] md:w-[480px] z-50 shadow-2xl transition-transform duration-300 ease-out",
+          !isEmbedded && (isOpen ? "translate-x-0" : "translate-x-full")
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-600">
-              <Menu className="h-5 w-5" />
-            </Button>
+            {!isEmbedded && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-600">
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1 shadow-md">
                 <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
@@ -447,14 +455,16 @@ const AIAssistantPanel = ({ isOpen, onClose }: AIAssistantPanelProps) => {
               <span className="font-semibold text-gray-800">AIA</span>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleClose}
-            className="h-8 w-8 text-gray-600 hover:bg-gray-100"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+          {!isEmbedded && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleClose}
+              className="h-8 w-8 text-gray-600 hover:bg-gray-100"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         {/* Messages Area */}
