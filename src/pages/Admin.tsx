@@ -135,13 +135,26 @@ const Admin = () => {
   const loadCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Buscar perfil
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*, user_roles(role)')
+        .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
-      setCurrentUser({ ...user, profile });
+      // Buscar roles separadamente
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      
+      setCurrentUser({ 
+        ...user, 
+        profile: { 
+          ...profile, 
+          user_roles: userRoles || [] 
+        } 
+      });
     }
   };
 
