@@ -69,6 +69,7 @@ export function ConversationDetailModal({
 
   const isAssignedToMe = conversation.assigned_to === user?.id;
   const isAssignedToSomeone = !!conversation.assigned_to;
+  const isClosed = conversation.status === 'closed';
 
   useEffect(() => {
     if (isOpen) {
@@ -378,7 +379,12 @@ export function ConversationDetailModal({
             </div>
             
             <div className="flex gap-2">
-              {isAssignedToMe ? (
+              {isClosed ? (
+                <Badge variant="secondary" className="text-sm">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Atendimento Encerrado
+                </Badge>
+              ) : isAssignedToMe ? (
                 <>
                   <Button size="sm" variant="outline" onClick={handleToggleAI} disabled={loading}>
                     {aiEnabled ? 'Desativar IA' : 'Ativar IA'}
@@ -448,33 +454,35 @@ export function ConversationDetailModal({
           </div>
         </ScrollArea>
         
-        {/* Campo de Notas do Agente */}
-        <div className="space-y-2 border-t pt-3">
-          <Label className="text-sm font-medium flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Notas Internas do Agente
-          </Label>
-          <Textarea
-            value={agentNotes}
-            onChange={(e) => setAgentNotes(e.target.value)}
-            placeholder="Adicione notas sobre esta conversa (contexto, observações, próximos passos...)&#10;&#10;Estas notas são internas e não são enviadas ao usuário."
-            className="min-h-[80px] resize-none"
-            disabled={!isAssignedToMe}
-          />
-          <Button 
-            size="sm" 
-            variant="outline"
-            onClick={handleSaveNotes}
-            disabled={!isAssignedToMe}
-            className="w-full"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Notas
-          </Button>
-        </div>
+        {/* Campo de Notas do Agente - oculto para atendimentos encerrados */}
+        {!isClosed && (
+          <div className="space-y-2 border-t pt-3">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Notas Internas do Agente
+            </Label>
+            <Textarea
+              value={agentNotes}
+              onChange={(e) => setAgentNotes(e.target.value)}
+              placeholder="Adicione notas sobre esta conversa (contexto, observações, próximos passos...)&#10;&#10;Estas notas são internas e não são enviadas ao usuário."
+              className="min-h-[80px] resize-none"
+              disabled={!isAssignedToMe}
+            />
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={handleSaveNotes}
+              disabled={!isAssignedToMe}
+              className="w-full"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Salvar Notas
+            </Button>
+          </div>
+        )}
 
-        {/* Input de mensagem */}
-        {isAssignedToMe && (
+        {/* Input de mensagem - oculto para atendimentos encerrados */}
+        {isAssignedToMe && !isClosed && (
           <div className="flex gap-2 border-t pt-3">
             <Input
               value={newMessage}
