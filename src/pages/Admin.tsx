@@ -1016,11 +1016,14 @@ const Admin = () => {
   );
 
   const renderAtendimentos = () => (
-    <div className="h-full">
-      <KanbanBoard 
-        conversations={conversations} 
-        onConversationClick={selectConversationInKanban}
-      />
+    <div className="h-full flex flex-col">
+      <DateRangeFilter onFilterChange={handleDateFilterChange} />
+      <div className="flex-1">
+        <KanbanBoard 
+          conversations={conversations} 
+          onConversationClick={selectConversationInKanban}
+        />
+      </div>
     </div>
   );
 
