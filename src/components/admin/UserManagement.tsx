@@ -5,11 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { UserCircle, Mail, Phone, Edit, Search } from 'lucide-react';
+import { UserCircle, Mail, Phone, Edit, Search, UserPlus, Loader2 } from 'lucide-react';
 
 interface User {
   id: string;
@@ -25,12 +25,21 @@ export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editForm, setEditForm] = useState({
     display_name: '',
     phone: '',
     mobile_phone: '',
   });
+  const [createForm, setCreateForm] = useState({
+    email: '',
+    display_name: '',
+    phone: '',
+    mobile_phone: '',
+    role: 'user' as 'admin' | 'gerente' | 'agente' | 'user',
+  });
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -139,6 +148,70 @@ export function UserManagement() {
     }
   };
 
+  const handleCreateUser = async () => {
+    // Validar email
+    if (!createForm.email || !createForm.email.includes('@')) {
+      toast({
+        title: 'Erro',
+        description: 'Por favor, insira um email válido',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: createForm.email,
+          display_name: createForm.display_name || createForm.email.split('@')[0],
+          phone: createForm.phone || null,
+          mobile_phone: createForm.mobile_phone || null,
+          role: createForm.role,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast({
+          title: 'Erro',
+          description: data.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Sucesso',
+        description: 'Convite enviado! O usuário receberá um email para definir sua senha.',
+      });
+
+      // Limpar formulário e fechar modal
+      setCreateForm({
+        email: '',
+        display_name: '',
+        phone: '',
+        mobile_phone: '',
+        role: 'user',
+      });
+      setIsCreateModalOpen(false);
+      
+      // Recarregar lista de usuários
+      loadUsers();
+    } catch (error) {
+      console.error('Erro ao criar usuário:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar o usuário. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'admin':
@@ -174,13 +247,21 @@ export function UserManagement() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserCircle className="h-6 w-6 text-primary" />
-            Gerenciamento de Usuários
-          </CardTitle>
-          <CardDescription>
-            Lista de todos os usuários e seus perfis de acesso
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserCircle className="h-6 w-6 text-primary" />
+                Gerenciamento de Usuários
+              </CardTitle>
+              <CardDescription>
+                Lista de todos os usuários e seus perfis de acesso
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateModalOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Criar Usuário
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Busca */}
@@ -319,6 +400,95 @@ export function UserManagement() {
               </Button>
               <Button onClick={handleSaveUser}>
                 Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Criação */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Novo Usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="create_email">Email *</Label>
+              <Input
+                id="create_email"
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                placeholder="usuario@email.com"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                O usuário receberá um email para definir sua senha
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="create_display_name">Nome</Label>
+              <Input
+                id="create_display_name"
+                value={createForm.display_name}
+                onChange={(e) => setCreateForm({ ...createForm, display_name: e.target.value })}
+                placeholder="Nome do usuário"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create_phone">Telefone</Label>
+              <Input
+                id="create_phone"
+                value={createForm.phone}
+                onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                placeholder="(00) 0000-0000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create_mobile_phone">Celular</Label>
+              <Input
+                id="create_mobile_phone"
+                value={createForm.mobile_phone}
+                onChange={(e) => setCreateForm({ ...createForm, mobile_phone: e.target.value })}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="create_role">Tipo de Acesso</Label>
+              <Select
+                value={createForm.role}
+                onValueChange={(value: 'admin' | 'gerente' | 'agente' | 'user') => 
+                  setCreateForm({ ...createForm, role: value })
+                }
+              >
+                <SelectTrigger id="create_role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Usuário</SelectItem>
+                  <SelectItem value="agente">Agente</SelectItem>
+                  <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={isCreating}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateUser} disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  'Criar Usuário'
+                )}
               </Button>
             </div>
           </div>
