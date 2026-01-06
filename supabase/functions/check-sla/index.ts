@@ -14,6 +14,51 @@ interface Conversation {
   assigned_to: string | null;
 }
 
+// Validate API key or user authentication
+async function validateAccess(req: Request, supabase: any): Promise<{ authorized: boolean; method: string; error?: string }> {
+  // Check for internal API key first (for cron jobs, automated calls)
+  const apiKey = req.headers.get('X-API-Key');
+  const expectedApiKey = Deno.env.get('INTERNAL_API_KEY');
+  
+  if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
+    return { authorized: true, method: 'api_key' };
+  }
+
+  // Check for JWT authentication
+  const authHeader = req.headers.get('Authorization');
+  
+  if (!authHeader) {
+    return { authorized: false, method: 'none', error: 'Missing authorization - provide X-API-Key or Authorization header' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return { authorized: false, method: 'jwt', error: 'Invalid or expired token' };
+    }
+
+    // Check if user has admin, gerente, or agente role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'gerente', 'agente'])
+      .limit(1);
+
+    if (roleError || !roleData || roleData.length === 0) {
+      return { authorized: false, method: 'jwt', error: 'Insufficient permissions - staff role required' };
+    }
+
+    return { authorized: true, method: 'jwt' };
+  } catch (error) {
+    console.error('Auth validation error:', error);
+    return { authorized: false, method: 'jwt', error: 'Authentication validation failed' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -23,6 +68,21 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Validate access
+    const accessResult = await validateAccess(req, supabase);
+    if (!accessResult.authorized) {
+      console.warn('Unauthorized SLA check attempt:', accessResult.error);
+      return new Response(
+        JSON.stringify({ error: accessResult.error }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log(`SLA check initiated via ${accessResult.method}`);
 
     const SLA_LIMIT_MINUTES = 30;
     const WARNING_TIME_MINUTES = 15;

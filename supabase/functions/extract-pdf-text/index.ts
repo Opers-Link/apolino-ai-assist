@@ -1,10 +1,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema with path traversal protection
+const requestSchema = z.object({
+  filePath: z.string()
+    .min(1, 'filePath is required')
+    .max(500, 'filePath too long')
+    .refine(
+      (path) => !path.includes('..'),
+      'Path traversal not allowed'
+    )
+    .refine(
+      (path) => /^[a-zA-Z0-9_\-\/]+\.(pdf|PDF)$/.test(path),
+      'Invalid file path format - must be a PDF file'
+    ),
+  fileId: z.string().uuid('Invalid fileId format - must be a valid UUID')
+});
 
 // Função segura para converter ArrayBuffer para Base64 (funciona com arquivos grandes)
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -20,23 +37,122 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// Validate user authentication and authorization
+async function validateUserAuth(req: Request, supabase: any): Promise<{ authorized: boolean; userId?: string; error?: string }> {
+  const authHeader = req.headers.get('Authorization');
+  
+  if (!authHeader) {
+    return { authorized: false, error: 'Missing authorization header' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return { authorized: false, error: 'Invalid or expired token' };
+    }
+
+    // Check if user has admin or gerente role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'gerente'])
+      .limit(1);
+
+    if (roleError || !roleData || roleData.length === 0) {
+      return { authorized: false, error: 'Insufficient permissions - admin or gerente role required' };
+    }
+
+    return { authorized: true, userId: user.id };
+  } catch (error) {
+    console.error('Auth validation error:', error);
+    return { authorized: false, error: 'Authentication validation failed' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { filePath, fileId } = await req.json();
-
-    if (!filePath || !fileId) {
-      throw new Error('filePath e fileId são obrigatórios');
-    }
-
-    console.log('Extracting text from PDF:', filePath);
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Validate user authentication first
+    const authResult = await validateUserAuth(req, supabase);
+    if (!authResult.authorized) {
+      console.warn('Unauthorized access attempt:', authResult.error);
+      return new Response(
+        JSON.stringify({ success: false, error: authResult.error }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log(`Authorized user ${authResult.userId} attempting PDF extraction`);
+
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate request with Zod
+    const validationResult = requestSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid request format', 
+          details: validationResult.error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { filePath, fileId } = validationResult.data;
+
+    console.log('Extracting text from PDF:', filePath, 'fileId:', fileId);
+
+    // Verify the file exists and belongs to a valid module
+    const { data: fileRecord, error: fileCheckError } = await supabase
+      .from('knowledge_module_files')
+      .select('id, file_path, module_id')
+      .eq('id', fileId)
+      .single();
+
+    if (fileCheckError || !fileRecord) {
+      console.error('File not found in database:', fileId);
+      return new Response(
+        JSON.stringify({ success: false, error: 'File not found in database' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the filePath matches the database record
+    if (fileRecord.file_path !== filePath) {
+      console.warn('FilePath mismatch:', { provided: filePath, expected: fileRecord.file_path });
+      return new Response(
+        JSON.stringify({ success: false, error: 'File path does not match database record' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Download PDF from storage
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -143,7 +259,7 @@ Regras:
       throw new Error(`Erro ao salvar texto: ${updateError.message}`);
     }
 
-    console.log('Extracted text saved to database');
+    console.log('Extracted text saved to database by user:', authResult.userId);
 
     return new Response(
       JSON.stringify({ 
