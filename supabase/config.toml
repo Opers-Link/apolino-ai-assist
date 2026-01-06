@@ -7,7 +7,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.extract-pdf-text]
-verify_jwt = false
+verify_jwt = true
 
 [functions.invite-user]
 verify_jwt = true

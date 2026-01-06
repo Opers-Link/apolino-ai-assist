@@ -1,11 +1,35 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const chatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string()
+    .min(1, 'Message cannot be empty')
+    .max(10000, 'Message too long (max 10000 characters)')
+});
+
+const userContextSchema = z.object({
+  userId: z.string().max(100).optional(),
+  currentSystem: z.string().max(100).optional(),
+  permissions: z.array(z.string().max(50)).max(20).optional(),
+  lastAction: z.string().max(200).optional()
+}).optional();
+
+const requestSchema = z.object({
+  messages: z.array(chatMessageSchema)
+    .min(1, 'At least one message required')
+    .max(50, 'Too many messages (max 50)'),
+  conversationId: z.string().uuid().optional().nullable(),
+  userContext: userContextSchema
+});
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -19,15 +43,79 @@ interface UserContext {
   lastAction?: string;
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_REQUESTS = 20; // Max requests per window
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour window
+
+async function checkRateLimit(supabase: any, sessionId: string): Promise<{ allowed: boolean; remaining: number }> {
+  try {
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+    
+    const { data: recentRequests, error } = await supabase
+      .from('ai_usage_logs')
+      .select('id')
+      .eq('session_id', sessionId)
+      .gte('created_at', windowStart);
+
+    if (error) {
+      console.error('Rate limit check error:', error);
+      // Allow request if rate limit check fails (fail open for usability)
+      return { allowed: true, remaining: RATE_LIMIT_REQUESTS };
+    }
+
+    const requestCount = recentRequests?.length || 0;
+    const remaining = Math.max(0, RATE_LIMIT_REQUESTS - requestCount);
+    
+    return {
+      allowed: requestCount < RATE_LIMIT_REQUESTS,
+      remaining
+    };
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    return { allowed: true, remaining: RATE_LIMIT_REQUESTS };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, userContext, conversationId } = await req.json();
+    // Parse and validate request body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate request with Zod
+    const validationResult = requestSchema.safeParse(body);
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request format', 
+          details: validationResult.error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { messages, userContext, conversationId } = validationResult.data;
     
-    console.log('Received request:', { messages, userContext, conversationId });
+    console.log('Received validated request:', { 
+      messageCount: messages.length, 
+      hasUserContext: !!userContext, 
+      conversationId 
+    });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -38,6 +126,32 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Generate session ID for rate limiting (use conversationId, userContext.userId, or IP)
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('x-real-ip') || 
+                     'unknown';
+    const sessionId = userContext?.userId || conversationId || `ip_${clientIP}`;
+
+    // Check rate limit
+    const rateLimitResult = await checkRateLimit(supabase, sessionId);
+    if (!rateLimitResult.allowed) {
+      console.warn('Rate limit exceeded for session:', sessionId);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Limite de requisições excedido. Tente novamente em 1 hora.',
+          retryAfter: 3600
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '3600'
+          } 
+        }
+      );
+    }
 
     // Verificar se IA está desabilitada para esta conversa
     if (conversationId) {
@@ -112,7 +226,7 @@ serve(async (req) => {
     // Registrar uso de IA no banco
     const { error: logError } = await supabase.from('ai_usage_logs').insert({
       conversation_id: conversationId || null,
-      session_id: userContext?.userId || null,
+      session_id: sessionId,
       prompt_tokens: data.usage?.prompt_tokens || null,
       completion_tokens: data.usage?.completion_tokens || null,
       total_tokens: data.usage?.total_tokens || null,
@@ -462,8 +576,6 @@ Para acessar o sistema Apolar Sales:
 4. Defina uma senha forte (mínimo 8 caracteres)
 5. Faça login com suas credenciais
 
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-login.png]
-
 👤 2. TIPOS DE ACESSO
 
 O sistema possui 4 níveis de acesso:
@@ -491,440 +603,128 @@ O sistema possui 4 níveis de acesso:
 - Sem permissão de edição
 - Acesso limitado a relatórios
 
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-tipos-acesso.png]
+🔄 3. FUNCIONALIDADES PRINCIPAIS
 
-🏠 3. DASHBOARD PRINCIPAL
+**Dashboard**
+- Visão geral de atividades
+- Métricas de desempenho
+- Tarefas pendentes
+- Alertas importantes
 
-Após o login, você verá o Dashboard com:
+**Leads**
+- Cadastro de novos leads
+- Qualificação e classificação
+- Histórico de interações
+- Distribuição automática
 
-**Métricas principais:**
-- Total de leads ativos
-- Oportunidades em andamento
-- Taxa de conversão
-- Leads por origem
-- Funil de vendas
-
-**Atalhos rápidos:**
-- Novo Lead
-- Nova Oportunidade
-- Meus Atendimentos
-- Relatórios
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-dashboard.png]
-
-📋 4. MENU LATERAL
-
-O menu lateral contém:
-
-**🏠 Dashboard**
-- Visão geral do sistema
-
-**👥 Leads**
-- Listagem de todos os leads
-- Filtros avançados
-- Importação/Exportação
-
-**🎯 Oportunidades**
+**Oportunidades**
 - Pipeline de vendas
 - Acompanhamento de propostas
-
-**📊 Relatórios**
-- Relatórios gerenciais
-- Análises de desempenho
-
-**⚙️ Configurações**
-- Perfil do usuário
-- Notificações
-- Integrações
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-menu-lateral.png]
-
-👥 5. GESTÃO DE LEADS
-
-**O que é um Lead?**
-Lead é um potencial cliente que demonstrou interesse em imóveis.
-
-**Visualizando Leads:**
-1. Clique em "Leads" no menu lateral
-2. Você verá uma lista com todos os leads
-3. Use os filtros para buscar leads específicos
-
-**Filtros disponíveis:**
-- Status (Novo, Em contato, Qualificado, Perdido)
-- Origem (Site, Telefone, WhatsApp, Indicação)
-- Corretor responsável
-- Data de cadastro
-- Tipo de imóvel de interesse
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-leads.png]
-
-➕ 6. CRIANDO UM NOVO LEAD
-
-**Passo a passo:**
-
-1. Clique no botão "+ Novo Lead" (canto superior direito)
-
-2. **Dados Pessoais:**
-   - Nome completo *obrigatório
-   - E-mail
-   - Telefone *obrigatório
-   - CPF
-   - Data de nascimento
-
-3. **Informações de Interesse:**
-   - Tipo de imóvel (Apartamento, Casa, Terreno, Comercial)
-   - Finalidade (Compra, Aluguel, Temporada)
-   - Faixa de preço
-   - Bairros de interesse
-   - Número de quartos desejados
-
-4. **Origem do Lead:**
-   - Como conheceu a Apolar?
-   - Campanha de marketing (se aplicável)
-
-5. **Observações:**
-   - Campo livre para anotações importantes
-   - Preferências específicas do cliente
-
-6. Clique em "Salvar Lead"
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-criar-lead.png]
-
-**Importante:**
-- Campos marcados com * são obrigatórios
-- O sistema atribui automaticamente um ID único ao lead
-- O corretor logado é definido como responsável automaticamente
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-lead-form.png]
-
-📝 7. ACOMPANHAMENTO DE LEADS
-
-**Visualizando detalhes:**
-1. Clique sobre qualquer lead na listagem
-2. Você verá a tela de detalhes com:
-   - Informações completas do lead
-   - Histórico de interações
-   - Imóveis apresentados
-   - Próximas tarefas
-
-**Registrando atendimento:**
-1. Na tela do lead, clique em "+ Nova Interação"
-2. Selecione o tipo:
-   - Ligação
-   - WhatsApp
-   - E-mail
-   - Visita presencial
-   - Vistoria em imóvel
-3. Descreva o que foi conversado
-4. Defina próxima ação (se necessário)
-5. Salve a interação
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-lead-detalhes.png]
-
-**Alterando status do lead:**
-- Novo → Lead acabou de entrar no sistema
-- Em contato → Primeiro contato realizado
-- Qualificado → Lead tem real interesse e potencial
-- Visitou → Cliente visitou imóvel(s)
-- Proposta → Proposta enviada/em análise
-- Ganho → Venda/Locação concretizada
-- Perdido → Lead desistiu ou não qualificado
-
-═══════════════════════════════════════════════════════
-📗 TUTORIAL: CHAVES E RESERVA
-═══════════════════════════════════════════════════════
-
-🔑 PROCESSO DE ENTREGA DE CHAVES
-
-**Quando entregar chaves:**
-- Cliente precisa visitar imóvel sozinho
-- Vistoria técnica agendada
-- Cliente já alugou/comprou e vai receber o imóvel
-
-**Passo a passo:**
-
-1. **No Apolar NET:**
-   - Acesse módulo "Locação" ou "Vendas"
-   - Busque o imóvel pelo código
-   - Clique em "Gestão de Chaves"
-
-2. **Registrar saída da chave:**
-   - Data e hora da entrega
-   - Nome completo do cliente
-   - CPF ou RG
-   - Telefone de contato
-   - Motivo (Visita, Vistoria, Entrega)
-   - Observações
-
-3. **Termo de responsabilidade:**
-   - Sistema gera termo automaticamente
-   - Cliente deve assinar
-   - Guarde cópia digitalizada
-
-4. **Registrar devolução:**
-   - Ao receber a chave de volta
-   - Conferir estado da chave
-   - Registrar data/hora de devolução
-   - Anotar observações (se houver danos)
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/tutorial-chaves-entrega.png]
-
-**⚠️ ATENÇÃO:**
-- NUNCA entregar chave sem registro no sistema
-- SEMPRE conferir identificação do cliente
-- Em caso de perda, comunicar imediatamente o proprietário
-- Chaves devem retornar em no máximo 24 horas
-
-═══════════════════════════════════════════════════════
-📙 TUTORIAL: LANÇAMENTOS
-═══════════════════════════════════════════════════════
-
-🏗️ GESTÃO DE LANÇAMENTOS IMOBILIÁRIOS
-
-**O que são lançamentos:**
-Empreendimentos novos (em construção ou na planta) que a Apolar comercializa.
-
-**Cadastrando um lançamento:**
-
-1. **Acesse Apolar NET → Lançamentos → Novo Lançamento**
-
-2. **Dados do Empreendimento:**
-   - Nome do empreendimento *
-   - Construtora/incorporadora *
-   - Endereço completo
-   - Bairro e cidade
-   - Data de lançamento
-   - Previsão de entrega
-   - Status (Em lançamento, Em construção, Pronto)
-
-3. **Informações Técnicas:**
-   - Número total de unidades
-   - Torres/blocos
-   - Tipos de unidades (studios, 1 dorm, 2 dorm, etc.)
-   - Metragem de cada tipo
-   - Características (vagas, suítes, etc.)
-
-4. **Valores e Condições:**
-   - Tabela de preços
-   - Formas de pagamento
-   - Condições especiais
-   - Descontos vigentes
-
-5. **Material de Divulgação:**
-   - Upload de plantas
-   - Fotos da obra
-   - Tour virtual (link)
-   - Memorial descritivo
-   - Folder digital
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/tutorial-lancamentos-processo.png]
-
-**Vinculando leads ao lançamento:**
-- Ao criar lead interessado em lançamento
-- Selecione o empreendimento específico
-- Sistema registra automaticamente
-- Relatórios de interesse por lançamento disponíveis
-
-**Acompanhamento de vendas:**
-- Dashboard específico por lançamento
-- Unidades disponíveis vs. vendidas
-- Pipeline de propostas
-- Ranking de corretores
-
-═══════════════════════════════════════════════════════
-📕 TUTORIAL: RESERVA E PROPOSTA (BR 2025 V 1.0)
-═══════════════════════════════════════════════════════
-
-📋 PROCESSO DE RESERVA E PROPOSTA
-
-**Diferença entre Reserva e Proposta:**
-
-**RESERVA:**
-- Demonstração de interesse do cliente
-- "Segurar" o imóvel temporariamente
-- Prazo: geralmente 7 dias
-- Pode exigir sinal ou não
-- Não é contrato definitivo
-
-**PROPOSTA:**
-- Oferta formal de compra/locação
-- Contém valores e condições
-- Enviada ao proprietário para análise
-- Pode ser aceita, recusada ou contrariada
-
-**FLUXO COMPLETO:**
-
-1. **Cliente escolhe imóvel**
-   ↓
-2. **Corretor registra interesse no sistema**
-   ↓
-3. **Reserva do imóvel (opcional)**
-   - Sistema bloqueia imóvel para outros corretores
-   - Prazo de 7 dias para formalizar proposta
-   ↓
-4. **Elaboração da proposta**
-   - Dados do proponente
-   - Valor ofertado
-   - Forma de pagamento
-   - Condições especiais
-   ↓
-5. **Envio para análise do proprietário**
-   - Sistema notifica proprietário
-   - Prazo para resposta: 48h
-   ↓
-6. **Resposta do proprietário**
-   - ✅ Aceita → Prosseguir para contrato
-   - ❌ Recusada → Informar cliente
-   - 🔄 Contraproposta → Negociar
-
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/tutorial-reserva-fluxo.png]
-
-**REGISTRANDO RESERVA NO SISTEMA:**
-
-1. No cadastro do lead/oportunidade
-2. Clique em "Fazer Reserva"
-3. Preencha:
-   - Código do imóvel
-   - Valor do sinal (se houver)
-   - Data da reserva
-   - Prazo de validade
-4. Sistema envia e-mail automático ao proprietário
-5. Imóvel fica "Reservado" no sistema
-
-**CRIANDO PROPOSTA:**
-
-1. Acesse o lead/oportunidade
-2. Clique em "Nova Proposta"
-3. Selecione o imóvel
-4. **Dados do Proponente:**
-   - Nome completo
-   - CPF/CNPJ
-   - Endereço atual
-   - Profissão e renda
-   - Referências pessoais
-
-5. **Condições da Proposta:**
-   - Valor ofertado (compra/aluguel)
-   - Valor de entrada (se compra)
-   - Financiamento? Qual banco?
-   - FGTS? Qual valor?
-   - Data desejada para entrada
-
-6. **Observações:**
-   - Condições especiais
-   - Pedidos específicos
-
-7. **Anexos:**
-   - Documentos do proponente
-   - Comprovante de renda
-   - Referências bancárias
-
-8. Clique em "Enviar Proposta"
-9. Sistema gera PDF automático
-10. Proprietário recebe notificação por e-mail
-
-**IMPORTANTE:**
-⚠️ Reserva NÃO garante aprovação
-⚠️ Sempre conferir documentação antes de enviar proposta
-⚠️ Manter cliente informado sobre status da proposta
-⚠️ Após aceite, agendar assinatura de contrato em até 48h
-
-═══════════════════════════════════════════════════════
-
-💡 DICAS IMPORTANTES
-
-**Sempre:**
-✅ Registre TODAS as interações com o cliente
-✅ Mantenha dados atualizados no sistema
-✅ Responda leads em até 5 minutos (quando possível)
-✅ Use o WhatsApp Business integrado ao CRM
-✅ Acompanhe métricas do seu desempenho
-
-**Nunca:**
-❌ Compartilhe dados pessoais de clientes
-❌ Prometa algo que não pode cumprir
-❌ Deixe leads sem acompanhamento
-❌ Esqueça de registrar vistorias e atendimentos
-
-**Em caso de dúvidas:**
-📞 Contate o suporte pelo Movidesk
-💬 Use este chat para tirar dúvidas rápidas
-📧 E-mail: suporte@apolar.com.br
-
-═══════════════════════════════════════════════════════
-
-🖼️ INSTRUÇÕES PARA EXIBIÇÃO DE IMAGENS
-
-Quando você quiser mostrar uma imagem dos manuais para ajudar na explicação:
-1. Mencione a imagem na resposta usando: [IMAGE:URL_DA_IMAGEM]
-2. O sistema renderizará a imagem automaticamente
-3. Use imagens para:
-   - Mostrar telas do sistema
-   - Ilustrar processos passo a passo
-   - Esclarecer dúvidas sobre localização de funcionalidades
-
-Exemplo de uso:
-"Para acessar o dashboard, você verá esta tela após o login:
-[IMAGE:https://nodhzumnsioftsftsbsn.supabase.co/storage/v1/object/public/manuals/apolar-sales-dashboard.png]"
-
-CONTEXTO DO BANCO DE DADOS:${dbContext || ''}
-
-CONTEXTO DO USUÁRIO:`;
-
-  let contextInfo = '';
-  if (userContext) {
-    if (userContext.userId) contextInfo += `\n- Usuário: ${userContext.userId}`;
-    if (userContext.currentSystem) contextInfo += `\n- Sistema atual: ${userContext.currentSystem}`;
-    if (userContext.permissions?.length) contextInfo += `\n- Permissões: ${userContext.permissions.join(', ')}`;
-    if (userContext.lastAction) contextInfo += `\n- Última ação: ${userContext.lastAction}`;
+- Previsão de fechamento
+- Relatórios de conversão
+
+**Imóveis**
+- Consulta de disponibilidade
+- Características e fotos
+- Valores e condições
+- Localização e entorno
+
+❓ 4. PROBLEMAS FREQUENTES
+
+**Problema: Não consigo fazer login**
+Solução:
+1. Verifique se está usando o e-mail corporativo correto
+2. Tente recuperar a senha clicando em "Esqueci minha senha"
+3. Limpe o cache do navegador
+4. Tente em outro navegador
+
+**Problema: Lead duplicado**
+Solução:
+1. Use a função de busca antes de cadastrar
+2. Verifique pelo CPF, telefone ou e-mail
+3. Se encontrar duplicata, solicite a mesclagem ao gestor
+
+**Problema: Relatório não carrega**
+Solução:
+1. Aguarde alguns segundos
+2. Reduza o período do relatório
+3. Limpe o cache do navegador
+4. Se persistir, abra ticket no suporte
+
+📞 CANAIS DE SUPORTE
+
+- **Chatbot AIA**: Para dúvidas rápidas e procedimentos
+- **Movidesk**: Para tickets técnicos e problemas complexos
+- **Gestor direto**: Para questões de permissões e acessos`;
+
+  let fullPrompt = basePrompt;
+
+  if (dbContext) {
+    fullPrompt += `\n\n📊 CONTEXTO ATUAL DO SISTEMA\n${dbContext}`;
   }
 
-  return basePrompt + contextInfo;
+  if (userContext) {
+    fullPrompt += `\n\n👤 INFORMAÇÕES DO USUÁRIO ATUAL`;
+    if (userContext.userId) fullPrompt += `\n- ID: ${userContext.userId}`;
+    if (userContext.currentSystem) fullPrompt += `\n- Sistema: ${userContext.currentSystem}`;
+    if (userContext.permissions?.length) fullPrompt += `\n- Permissões: ${userContext.permissions.join(', ')}`;
+    if (userContext.lastAction) fullPrompt += `\n- Última ação: ${userContext.lastAction}`;
+  }
+
+  return fullPrompt;
 }
 
 async function saveMessages(supabase: any, conversationId: string, userMessage: string, aiResponse: string) {
   try {
-    // Buscar o número atual de mensagens na conversa
-    const { data: existingMessages } = await supabase
+    // Buscar o último message_order da conversa
+    const { data: lastMessage, error: fetchError } = await supabase
       .from('chat_messages')
       .select('message_order')
       .eq('conversation_id', conversationId)
       .order('message_order', { ascending: false })
-      .limit(1);
+      .limit(1)
+      .single();
 
-    const nextOrder = existingMessages?.length ? existingMessages[0].message_order + 1 : 1;
+    let nextOrder = 1;
+    if (!fetchError && lastMessage) {
+      nextOrder = (lastMessage.message_order || 0) + 1;
+    }
 
-    // Salvar mensagem do usuário
-    await supabase
+    // Inserir mensagem do usuário
+    const { error: userMsgError } = await supabase
       .from('chat_messages')
       .insert({
         conversation_id: conversationId,
         content: userMessage,
         is_user: true,
-        message_order: nextOrder,
+        message_order: nextOrder
       });
 
-    // Salvar resposta da IA
-    await supabase
+    if (userMsgError) {
+      console.error('Error saving user message:', userMsgError);
+    }
+
+    // Inserir resposta da IA
+    const { error: aiMsgError } = await supabase
       .from('chat_messages')
       .insert({
         conversation_id: conversationId,
         content: aiResponse,
         is_user: false,
-        message_order: nextOrder + 1,
+        message_order: nextOrder + 1
       });
+
+    if (aiMsgError) {
+      console.error('Error saving AI message:', aiMsgError);
+    }
 
     // Atualizar contador de mensagens na conversa
     await supabase
       .from('chat_conversations')
-      .update({ 
-        total_messages: nextOrder + 1,
-        status: 'active'
-      })
+      .update({ total_messages: nextOrder + 1 })
       .eq('id', conversationId);
 
-    console.log('Messages saved successfully');
   } catch (error) {
-    console.error('Error saving messages:', error);
+    console.error('Error in saveMessages:', error);
   }
 }
