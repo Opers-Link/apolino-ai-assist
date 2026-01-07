@@ -163,6 +163,39 @@ export type Database = {
           },
         ]
       }
+      conversation_insights: {
+        Row: {
+          conversation_count: number | null
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          insights_data: Json
+          message_count: number | null
+          period_end: string
+          period_start: string
+        }
+        Insert: {
+          conversation_count?: number | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          insights_data: Json
+          message_count?: number | null
+          period_end: string
+          period_start: string
+        }
+        Update: {
+          conversation_count?: number | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          insights_data?: Json
+          message_count?: number | null
+          period_end?: string
+          period_start?: string
+        }
+        Relationships: []
+      }
       knowledge_config: {
         Row: {
           id: string
