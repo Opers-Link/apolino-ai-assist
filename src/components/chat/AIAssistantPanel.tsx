@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Menu, Send, Sparkles, Ticket, Headphones } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,6 +31,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   const [sessionId, setSessionId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
   const [aiDisabled, setAiDisabled] = useState(false);
+  const [conversationClosed, setConversationClosed] = useState(false);
   const [lastActivityTime, setLastActivityTime] = useState<Date>(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -325,7 +326,20 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
         .single();
       
       if (data) {
-        if ((data.ai_enabled === false || data.status === 'in_progress') && !aiDisabled) {
+        // Detectar conversa encerrada pelo agente
+        if (data.status === 'closed' && !conversationClosed) {
+          setConversationClosed(true);
+          setAiDisabled(false); // Permitir nova interação
+          
+          toast({
+            title: "Atendimento encerrado",
+            description: "O agente finalizou seu atendimento. Você pode iniciar uma nova conversa.",
+          });
+          return;
+        }
+
+        // Detectar agente assumindo a conversa
+        if ((data.ai_enabled === false || data.status === 'in_progress') && !aiDisabled && !conversationClosed) {
           setAiDisabled(true);
           
           const confirmMessage: Message = {
@@ -348,7 +362,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     const interval = setInterval(checkConversationStatus, 5000);
     
     return () => clearInterval(interval);
-  }, [conversationId, aiDisabled]);
+  }, [conversationId, aiDisabled, conversationClosed]);
 
   // Verificar inatividade a cada 30 segundos
   useEffect(() => {
@@ -401,6 +415,30 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || isCreatingConversation) return;
+
+    // Se a conversa foi encerrada, iniciar uma nova
+    if (conversationClosed) {
+      setConversationClosed(false);
+      setMessages([]);
+      setMessageCount(0);
+      setAiDisabled(false);
+      localStorage.removeItem('aia_conversation_id');
+      
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setSessionId(newSessionId);
+      const newConversationId = await createConversation(newSessionId);
+      
+      if (!newConversationId) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível iniciar nova conversa.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setConversationId(newConversationId);
+    }
 
     if (messageCount >= MAX_MESSAGES) {
       toast({
@@ -647,7 +685,14 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
 
         {/* Input Area */}
         <div className="p-4 border-t border-gray-100">
-          {aiDisabled && (
+          {conversationClosed && (
+            <div className="flex items-center justify-center gap-2 text-xs text-green-600 bg-green-50 rounded-lg py-2 mb-3">
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>Atendimento encerrado - digite para iniciar nova conversa</span>
+            </div>
+          )}
+
+          {aiDisabled && !conversationClosed && (
             <div className="flex items-center justify-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg py-2 mb-3">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Conectado com atendente humano - continue a conversa normalmente</span>
@@ -667,7 +712,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Pedir para AIA"
+              placeholder={conversationClosed ? "Iniciar nova conversa..." : "Pedir para AIA"}
               disabled={isLoading || isCreatingConversation}
               className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
               rows={1}

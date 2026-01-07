@@ -301,12 +301,33 @@ export function ConversationDetailModal({
 
     setLoading(true);
     try {
+      // Buscar nome do agente
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', user?.id)
+        .single();
+
+      const agentName = profile?.display_name || 'Agente';
+
+      // Inserir mensagem automática de encerramento
+      await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: conversation.id,
+          content: `✅ Atendimento encerrado por ${agentName}.\n\nSe precisar de mais ajuda, é só enviar uma nova mensagem!`,
+          is_user: false,
+          message_order: messages.length + 1
+        });
+
+      // Atualizar status da conversa
       const { error } = await supabase
         .from('chat_conversations')
         .update({
           status: 'closed',
           resolved_at: new Date().toISOString(),
-          ended_at: new Date().toISOString()
+          ended_at: new Date().toISOString(),
+          total_messages: messages.length + 1
         })
         .eq('id', conversation.id);
 
