@@ -447,6 +447,12 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     const currentMessageOrder = messageCount + 1;
     await saveMessage(userMessage.content, true, currentMessageOrder, currentConversationId);
 
+    // Se está em atendimento humano, apenas salvar a mensagem e não chamar a IA
+    if (aiDisabled) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const userContext = {
         userId: 'usuario_atual',
@@ -644,7 +650,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
           {aiDisabled && (
             <div className="flex items-center justify-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg py-2 mb-3">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Aguardando atendente humano...</span>
+              <span>Conectado com atendente humano - continue a conversa normalmente</span>
             </div>
           )}
 
@@ -662,13 +668,13 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Pedir para AIA"
-              disabled={isLoading || aiDisabled || isCreatingConversation}
+              disabled={isLoading || isCreatingConversation}
               className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
               rows={1}
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading || aiDisabled || isCreatingConversation}
+              disabled={!inputValue.trim() || isLoading || isCreatingConversation}
               size="icon"
               className="absolute right-2 bottom-2 h-8 w-8 rounded-full bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white transition-colors disabled:opacity-40"
             >
