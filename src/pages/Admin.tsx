@@ -530,23 +530,22 @@ const Admin = () => {
       <DateRangeFilter onFilterChange={handleDateFilterChange} />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Card Blue - Total Conversas */}
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-apolar-blue/5 border border-apolar-blue/20 hover:border-apolar-blue/40 hover:shadow-2xl hover:shadow-apolar-blue/10 hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-apolar-blue/5 rounded-full blur-2xl group-hover:bg-apolar-blue/10 transition-all" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              {/* Card - Total Conversas */}
+              <Card className="group bg-white rounded-xl shadow-lg border border-apolar-light-gray hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
-                    <CardTitle className="text-sm font-medium text-apolar-blue/70 uppercase tracking-wide">
+                    <CardTitle className="text-sm font-medium text-apolar-dark-gray uppercase tracking-wide">
                       Total de Conversas
                     </CardTitle>
-                    <div className="text-4xl font-bold bg-gradient-to-br from-apolar-blue to-apolar-blue-dark bg-clip-text text-transparent mt-2">
+                    <div className="text-4xl font-bold text-apolar-blue mt-2">
                       {stats.totalConversations}
                     </div>
                   </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-apolar-blue to-apolar-blue-dark flex items-center justify-center shadow-lg shadow-apolar-blue/30 group-hover:scale-110 transition-transform">
-                    <MessageSquare className="h-7 w-7 text-white" />
+                  <div className="h-14 w-14 rounded-2xl bg-apolar-blue/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <MessageSquare className="h-7 w-7 text-apolar-blue" />
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <p className="text-sm font-medium text-green-600">+12% vs. mês anterior</p>
@@ -554,23 +553,22 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              {/* Card Gold - Total Mensagens */}
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-apolar-gold/5 border border-apolar-gold/30 hover:border-apolar-gold/50 hover:shadow-2xl hover:shadow-apolar-gold/20 hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-apolar-gold/10 rounded-full blur-2xl group-hover:bg-apolar-gold/20 transition-all" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              {/* Card - Total Mensagens */}
+              <Card className="group bg-white rounded-xl shadow-lg border border-apolar-light-gray hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
-                    <CardTitle className="text-sm font-medium text-apolar-gold-alt/70 uppercase tracking-wide">
+                    <CardTitle className="text-sm font-medium text-apolar-dark-gray uppercase tracking-wide">
                       Total de Mensagens
                     </CardTitle>
-                    <div className="text-4xl font-bold bg-gradient-to-br from-apolar-gold-alt to-apolar-gold bg-clip-text text-transparent mt-2">
+                    <div className="text-4xl font-bold text-apolar-blue mt-2">
                       {stats.totalMessages}
                     </div>
                   </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-apolar-gold to-apolar-gold-alt flex items-center justify-center shadow-lg shadow-apolar-gold/30 group-hover:scale-110 transition-transform">
+                  <div className="h-14 w-14 rounded-2xl bg-apolar-blue/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Users className="h-7 w-7 text-apolar-blue" />
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <p className="text-sm font-medium text-green-600">+8% vs. mês anterior</p>
@@ -578,75 +576,71 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              {/* Card Green - Ativas */}
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-green-50 border border-green-200 hover:border-green-300 hover:shadow-2xl hover:shadow-green-100 hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-apolar-gold/10 to-green-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              {/* Card - Ativas */}
+              <Card className="group bg-white rounded-xl shadow-lg border border-apolar-light-gray hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
-                    <CardTitle className="text-sm font-medium text-green-700/70 uppercase tracking-wide">
+                    <CardTitle className="text-sm font-medium text-apolar-dark-gray uppercase tracking-wide">
                       Conversas Ativas
                     </CardTitle>
-                    <div className="text-4xl font-bold bg-gradient-to-br from-green-600 to-green-700 bg-clip-text text-transparent mt-2">
+                    <div className="text-4xl font-bold text-apolar-blue mt-2">
                       {stats.activeConversations}
                     </div>
                   </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform relative">
-                    <div className="absolute inset-0 bg-apolar-gold/20 rounded-2xl animate-pulse" />
-                    <TrendingUp className="h-7 w-7 text-white relative z-10" />
+                  <div className="h-14 w-14 rounded-2xl bg-apolar-blue/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <TrendingUp className="h-7 w-7 text-apolar-blue" />
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <p className="text-sm font-medium text-green-600">Em tempo real</p>
+                    <p className="text-sm font-medium text-apolar-dark-gray">Em tempo real</p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Card Purple - Requisições por conversa */}
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-purple-50 border border-purple-200 hover:border-purple-300 hover:shadow-2xl hover:shadow-purple-100 hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              {/* Card - Requisições por conversa */}
+              <Card className="group bg-white rounded-xl shadow-lg border border-apolar-light-gray hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
-                    <CardTitle className="text-sm font-medium text-purple-700/70 uppercase tracking-wide">
+                    <CardTitle className="text-sm font-medium text-apolar-dark-gray uppercase tracking-wide">
                       Requisições por conversa
                     </CardTitle>
-                    <div className="text-4xl font-bold bg-gradient-to-br from-purple-600 to-purple-700 bg-clip-text text-transparent mt-2">
+                    <div className="text-4xl font-bold text-apolar-blue mt-2">
                       {stats.avgAiRequestsPerConversation}
                     </div>
                   </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
-                    <Brain className="h-7 w-7 text-white" />
+                  <div className="h-14 w-14 rounded-2xl bg-apolar-blue/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Brain className="h-7 w-7 text-apolar-blue" />
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-purple-600" />
-                    <p className="text-sm font-medium text-purple-600">Média de chamadas à IA</p>
+                    <Zap className="h-4 w-4 text-apolar-gold" />
+                    <p className="text-sm font-medium text-apolar-dark-gray">Média de chamadas à IA</p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Card Pink - Total de Requisições */}
-              <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-pink-50 border border-pink-200 hover:border-pink-300 hover:shadow-2xl hover:shadow-pink-100 hover:scale-[1.02] transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-pink-100/50 rounded-full blur-2xl group-hover:opacity-80 transition-all" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              {/* Card - Total de Requisições */}
+              <Card className="group bg-white rounded-xl shadow-lg border border-apolar-light-gray hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <div>
-                    <CardTitle className="text-sm font-medium text-pink-700/70 uppercase tracking-wide">
+                    <CardTitle className="text-sm font-medium text-apolar-dark-gray uppercase tracking-wide">
                       Total de Requisições
                     </CardTitle>
-                    <div className="text-4xl font-bold bg-gradient-to-br from-pink-600 to-pink-700 bg-clip-text text-transparent mt-2">
+                    <div className="text-4xl font-bold text-apolar-blue mt-2">
                       {stats.aiRequests}
                     </div>
                   </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
-                    <Sparkles className="h-7 w-7 text-white" />
+                  <div className="h-14 w-14 rounded-2xl bg-apolar-blue/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Sparkles className="h-7 w-7 text-apolar-blue" />
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-pink-600" />
-                    <p className="text-sm font-medium text-pink-600">Chamadas à API Gemini no período</p>
+                    <Bot className="h-4 w-4 text-apolar-gold" />
+                    <p className="text-sm font-medium text-apolar-dark-gray">Chamadas à API Gemini no período</p>
                   </div>
                 </CardContent>
               </Card>
