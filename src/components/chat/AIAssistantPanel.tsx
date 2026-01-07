@@ -44,16 +44,80 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     window.open(MOVIDESK_URL, '_blank');
   };
 
+  // Recuperar ou criar conversa ao abrir o chat
   useEffect(() => {
-    if (isOpen && !sessionId) {
+    if (isOpen && !conversationId) {
+      recoverOrCreateConversation();
+    }
+  }, [isOpen]);
+
+  const recoverOrCreateConversation = async () => {
+    setIsCreatingConversation(true);
+    try {
+      // Tentar recuperar conversa ativa do localStorage
+      const storedConversationId = localStorage.getItem('aia_conversation_id');
+      
+      if (storedConversationId) {
+        // Verificar se a conversa ainda está ativa
+        const { data: existingConversation, error } = await supabase
+          .from('chat_conversations')
+          .select('id, session_id, status, ai_enabled')
+          .eq('id', storedConversationId)
+          .in('status', ['active', 'needs_help', 'in_progress'])
+          .single();
+
+        if (!error && existingConversation) {
+          setConversationId(existingConversation.id);
+          setSessionId(existingConversation.session_id);
+          setAiDisabled(existingConversation.ai_enabled === false || existingConversation.status === 'in_progress');
+          
+          // Recuperar mensagens existentes
+          await loadExistingMessages(existingConversation.id);
+          setIsCreatingConversation(false);
+          return;
+        } else {
+          // Conversa não existe mais ou está fechada, limpar localStorage
+          localStorage.removeItem('aia_conversation_id');
+        }
+      }
+
+      // Criar nova conversa
       const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(newSessionId);
-      createConversation(newSessionId);
+      await createConversation(newSessionId);
+    } catch (error) {
+      console.error('Erro ao recuperar/criar conversa:', error);
+    } finally {
+      setIsCreatingConversation(false);
     }
-  }, [isOpen, sessionId]);
+  };
+
+  const loadExistingMessages = async (convId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('conversation_id', convId)
+        .order('message_order', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const loadedMessages: Message[] = data.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          isUser: msg.is_user,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(loadedMessages);
+        setMessageCount(data.length);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
+    }
+  };
 
   const createConversation = async (sid: string): Promise<string | null> => {
-    setIsCreatingConversation(true);
     try {
       const userAgent = navigator.userAgent;
       
@@ -75,14 +139,14 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
 
       if (data) {
         setConversationId(data.id);
+        // Salvar no localStorage para recuperação
+        localStorage.setItem('aia_conversation_id', data.id);
         return data.id;
       }
       return null;
     } catch (error) {
       console.error('Erro ao criar conversa:', error);
       return null;
-    } finally {
-      setIsCreatingConversation(false);
     }
   };
 
@@ -120,10 +184,27 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     }
   };
 
-  const finishConversation = async () => {
+  const finishConversation = async (forceFinish = false) => {
     if (!conversationId) return;
 
     try {
+      // Verificar status atual da conversa
+      const { data } = await supabase
+        .from('chat_conversations')
+        .select('status, human_requested_at')
+        .eq('id', conversationId)
+        .single();
+
+      // NÃO finalizar se está aguardando ou em atendimento humano (exceto se forçar)
+      if (!forceFinish && data && (
+        data.status === 'needs_help' || 
+        data.status === 'in_progress' || 
+        data.human_requested_at
+      )) {
+        // Manter a conversa para o usuário poder voltar
+        return;
+      }
+
       await supabase
         .from('chat_conversations')
         .update({ 
@@ -131,6 +212,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
           status: 'finished'
         })
         .eq('id', conversationId);
+
+      // Limpar localStorage apenas se finalizou
+      localStorage.removeItem('aia_conversation_id');
     } catch (error) {
       console.error('Erro ao finalizar conversa:', error);
     }
@@ -292,12 +376,20 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
             })
             .eq('id', conversationId);
 
+          // Limpar localStorage ao inativar
+          localStorage.removeItem('aia_conversation_id');
+
           toast({
             title: "Conversa encerrada",
             description: "Sua conversa foi encerrada por inatividade. Inicie uma nova conversa se precisar de ajuda.",
           });
 
-          handleClose();
+          // Resetar estado para nova conversa
+          setConversationId('');
+          setSessionId('');
+          setMessages([]);
+          setMessageCount(0);
+          onClose();
         }
       }
     };
@@ -413,7 +505,8 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   };
 
   const handleClose = () => {
-    finishConversation();
+    // Apenas fecha o painel, não finaliza conversas que aguardam atendimento
+    finishConversation(false);
     onClose();
   };
 
