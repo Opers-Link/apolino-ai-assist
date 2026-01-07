@@ -41,16 +41,27 @@ interface ConversationInsight {
   message_count: number;
 }
 
-export const InsightsPanel: React.FC = () => {
+interface InsightsPanelProps {
+  dateFilter?: { startDate: Date | null; endDate: Date | null };
+}
+
+export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: externalFilter }) => {
   const [insights, setInsights] = useState<ConversationInsight | null>(null);
   const [insightsHistory, setInsightsHistory] = useState<ConversationInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [dateFilter, setDateFilter] = useState<{ startDate: Date | null; endDate: Date | null }>({
+  const [internalDateFilter, setInternalDateFilter] = useState<{ startDate: Date | null; endDate: Date | null }>({
     startDate: subDays(new Date(), 7),
     endDate: new Date()
   });
   const { toast } = useToast();
+
+  // Usar filtro externo se fornecido, senão usar interno
+  const effectiveDateFilter = externalFilter?.startDate && externalFilter?.endDate
+    ? externalFilter
+    : internalDateFilter;
+  
+  const showInternalFilter = !externalFilter?.startDate;
 
   useEffect(() => {
     loadInsightsHistory();
@@ -82,7 +93,7 @@ export const InsightsPanel: React.FC = () => {
   };
 
   const handleGenerateInsights = async () => {
-    if (!dateFilter.startDate || !dateFilter.endDate) {
+    if (!effectiveDateFilter.startDate || !effectiveDateFilter.endDate) {
       toast({
         title: 'Selecione um período',
         description: 'É necessário selecionar as datas de início e fim para gerar os insights.',
@@ -95,8 +106,8 @@ export const InsightsPanel: React.FC = () => {
     try {
       const { data, error } = await supabase.functions.invoke('generate-insights', {
         body: {
-          period_start: dateFilter.startDate.toISOString(),
-          period_end: dateFilter.endDate.toISOString()
+          period_start: effectiveDateFilter.startDate!.toISOString(),
+          period_end: effectiveDateFilter.endDate!.toISOString()
         }
       });
 
@@ -125,7 +136,7 @@ export const InsightsPanel: React.FC = () => {
   };
 
   const handleDateFilterChange = (startDate: Date | null, endDate: Date | null) => {
-    setDateFilter({ startDate, endDate });
+    setInternalDateFilter({ startDate, endDate });
   };
 
   const selectInsight = (insight: ConversationInsight) => {
@@ -160,8 +171,15 @@ export const InsightsPanel: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header com filtros e botão de gerar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <DateRangeFilter onFilterChange={handleDateFilterChange} />
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-apolar-blue/10">
+        {showInternalFilter ? (
+          <DateRangeFilter onFilterChange={handleDateFilterChange} />
+        ) : (
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-apolar-blue" />
+            <span className="font-medium text-apolar-blue">Insights do Período</span>
+          </div>
+        )}
         <Button 
           onClick={handleGenerateInsights} 
           disabled={generating}

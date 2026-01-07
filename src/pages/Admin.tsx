@@ -652,78 +652,8 @@ const Admin = () => {
               </Card>
             </div>
 
-            {/* Card de Conversas Recentes */}
-            <Card className="bg-white/70 backdrop-blur-xl border border-apolar-blue/10 shadow-xl">
-              <CardHeader className="border-b border-apolar-blue/10 bg-gradient-to-r from-apolar-blue/5 to-transparent">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold text-apolar-blue flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-apolar-blue to-apolar-blue-dark flex items-center justify-center">
-                        <MessageSquare className="h-5 w-5 text-white" />
-                      </div>
-                      Conversas Recentes
-                    </CardTitle>
-                    <CardDescription className="mt-1">Últimas 10 conversas registradas</CardDescription>
-                  </div>
-                  <Badge className="bg-gradient-to-r from-apolar-gold to-apolar-gold-alt text-apolar-blue font-semibold px-4 py-1">
-                    {conversations.length} total
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <ScrollArea className="h-[400px] pr-4">
-                  <div className="space-y-3">
-                    {conversations.slice(0, 10).map((conversation, index) => (
-                      <div
-                        key={conversation.id}
-                        className="group relative overflow-hidden p-4 bg-gradient-to-r from-white to-apolar-blue/5 border border-apolar-blue/10 rounded-xl hover:border-apolar-gold/40 hover:shadow-lg hover:shadow-apolar-gold/10 hover:-translate-y-1 cursor-pointer transition-all duration-300 fade-in-up"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                        onClick={() => selectConversationInKanban(conversation)}
-                      >
-                        {/* Linha de cor lateral */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                          conversation.status === 'active' ? 'bg-gradient-to-b from-green-500 to-green-600' :
-                          conversation.status === 'needs_help' ? 'bg-gradient-to-b from-apolar-red to-red-600' :
-                          'bg-gradient-to-b from-apolar-blue to-apolar-blue-dark'
-                        }`} />
-                        
-                        <div className="flex items-center justify-between ml-3">
-                          <div className="flex items-center space-x-4">
-                            <div className={`w-3 h-3 rounded-full ${getStatusColor(conversation.status)} shadow-lg`} />
-                            <div>
-                              <p className="font-medium text-apolar-blue">{conversation.session_id.slice(0, 8)}...</p>
-                              <p className="text-sm text-muted-foreground">
-                                {formatDateTime(conversation.started_at)}
-                              </p>
-                              <div className="flex gap-2 mt-2">
-                                {conversation.category && (
-                                  <Badge className={getCategoryColor(conversation.category)}>
-                                    {conversation.category}
-                                  </Badge>
-                                )}
-                                {conversation.tags && conversation.tags.length > 0 && (
-                                  <Badge variant="outline" className="text-xs bg-white/50">
-                                    +{conversation.tags.length} tags
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant="secondary" className="bg-apolar-blue/10 text-apolar-blue">
-                              {conversation.total_messages} mensagens
-                            </Badge>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {conversation.status === 'active' ? 'Ativa' : 'Finalizada'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            {/* Seção de Insights */}
+            <InsightsPanel dateFilter={dateFilter} />
     </div>
   );
 
@@ -1119,8 +1049,6 @@ const Admin = () => {
               return renderConversations();
             case 'atendimentos':
               return renderAtendimentos();
-            case 'insights':
-              return <InsightsPanel />;
             case 'settings':
               return renderSettings();
             case 'users':
