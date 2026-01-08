@@ -15,6 +15,8 @@ const getTabTitle = (tab: string) => {
       return 'Conversas';
     case 'atendimentos':
       return 'Atendimentos';
+    case 'manual-insights':
+      return 'Insights Manual';
     case 'settings':
       return 'Configurações';
     case 'users':

@@ -8,6 +8,7 @@ import { KanbanBoard } from '@/components/admin/KanbanBoard';
 import { ConversationDetailModal } from '@/components/admin/ConversationDetailModal';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { InsightsPanel } from '@/components/admin/InsightsPanel';
+import { ManualInsightsPanel } from '@/components/admin/ManualInsightsPanel';
 import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save, Sparkles, BookOpen, Brain, Zap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PromptEditor } from '@/components/admin/PromptEditor';
@@ -1037,12 +1038,14 @@ const Admin = () => {
       <AdminLayout>
         {(activeTab) => {
           switch (activeTab) {
-            case 'dashboard':
+          case 'dashboard':
               return renderDashboard();
             case 'conversations':
               return renderConversations();
             case 'atendimentos':
               return renderAtendimentos();
+            case 'manual-insights':
+              return <ManualInsightsPanel />;
             case 'settings':
               return renderSettings();
             case 'users':

@@ -12,5 +12,11 @@ verify_jwt = true
 [functions.generate-insights]
 verify_jwt = true
 
+[functions.generate-manual-insights]
+verify_jwt = false
+
+[functions.invite-user]
+verify_jwt = true
+
 [functions.invite-user]
 verify_jwt = true
