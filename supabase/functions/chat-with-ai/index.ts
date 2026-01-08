@@ -179,8 +179,17 @@ serve(async (req) => {
     // Buscar contexto do banco de dados
     const dbContext = await gatherDatabaseContext(supabase, userContext);
     
-    // Buscar prompt customizado do banco ou usar fallback
-    const systemPrompt = await getSystemPrompt(supabase, userContext, dbContext);
+    // Extrair a última mensagem do usuário para classificação de módulos
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+    
+    // Buscar prompt customizado do banco ou usar fallback (com seleção inteligente de módulos)
+    const { prompt: systemPrompt, modulesUsed, classificationMethod } = await getSystemPrompt(
+      supabase, 
+      userContext, 
+      dbContext,
+      lastUserMessage,
+      LOVABLE_API_KEY
+    );
     
     const fullMessages = [
       { role: 'system' as const, content: systemPrompt },
@@ -223,7 +232,7 @@ serve(async (req) => {
     // Buscar módulos para verificar se foram usados
     const { modules } = await getKnowledgeModules(supabase);
 
-    // Registrar uso de IA no banco
+    // Registrar uso de IA no banco com informações de módulos
     const { error: logError } = await supabase.from('ai_usage_logs').insert({
       conversation_id: conversationId || null,
       session_id: sessionId,
@@ -231,9 +240,12 @@ serve(async (req) => {
       completion_tokens: data.usage?.completion_tokens || null,
       total_tokens: data.usage?.total_tokens || null,
       model: 'google/gemini-2.5-flash',
-      has_knowledge_modules: modules.length > 0,
+      has_knowledge_modules: modulesUsed.length > 0,
       success: true
     });
+
+    // Log detalhado da economia de tokens
+    console.log(`Modules loaded: ${modulesUsed.length > 0 ? modulesUsed.join(', ') : 'ALL'} (method: ${classificationMethod})`);
 
     if (logError) {
       console.error('Erro ao registrar uso de IA:', logError);
@@ -320,11 +332,161 @@ async function getKnowledgeModules(supabase: any) {
       config[item.key] = item.value;
     });
 
-    return { modules: modulesWithContent, config };
+  return { modules: modulesWithContent, config };
   } catch (error) {
     console.error('Error in getKnowledgeModules:', error);
     return { modules: [], config: {} };
   }
+}
+
+// Mapeamento de palavras-chave para módulos
+const MODULE_KEYWORDS: Record<string, string[]> = {
+  'MODULO_CRM_SALES': [
+    'crm', 'sales', 'lead', 'leads', 'oportunidade', 'oportunidades', 'pipeline',
+    'funil', 'vendas', 'conversão', 'prospecção', 'cliente', 'clientes',
+    'atendimento', 'captação', 'cadastro cliente', 'cadastrar cliente'
+  ],
+  'MODULO_NET_LOCACAO': [
+    'locação', 'locacao', 'aluguel', 'alugar', 'inquilino', 'locatário', 'locatario',
+    'contrato locação', 'contrato aluguel', 'fiador', 'caucao', 'caução',
+    'vistoria', 'rescisão', 'renovação', 'reajuste', 'despejo', 'garantia locatícia'
+  ],
+  'MODULO_AREA_DO_CLIENTE': [
+    'área do cliente', 'area do cliente', 'portal cliente', 'acesso cliente',
+    'segunda via', 'boleto', 'extrato', 'informe', 'declaração', 'ir',
+    'imposto de renda', 'autoatendimento', 'meu espaço'
+  ],
+  'MODULO_NET_VENDAS': [
+    'venda imóvel', 'venda imovel', 'compra', 'comprar', 'financiamento',
+    'proposta compra', 'opção', 'opcao', 'angariação', 'angariacao',
+    'captação imóvel', 'captacao imovel', 'exclusividade', 'avaliação',
+    'documentação venda', 'escritura', 'certidão', 'matrícula'
+  ],
+  'MODULO_TRANSVERSAL': [
+    'login', 'senha', 'acesso', 'permissão', 'permissao', 'usuário', 'usuario',
+    'perfil', 'configuração', 'configuracao', 'geral', 'sistema', 'erro',
+    'problema', 'bug', 'não funciona', 'ajuda', 'tutorial'
+  ]
+};
+
+// Classificar módulos relevantes por palavras-chave
+function classifyModulesByKeywords(userMessage: string): string[] {
+  const messageLower = userMessage.toLowerCase();
+  const relevantModules: Set<string> = new Set();
+  
+  for (const [moduleName, keywords] of Object.entries(MODULE_KEYWORDS)) {
+    for (const keyword of keywords) {
+      if (messageLower.includes(keyword)) {
+        relevantModules.add(moduleName);
+        break;
+      }
+    }
+  }
+  
+  // Sempre incluir MODULO_TRANSVERSAL como fallback
+  relevantModules.add('MODULO_TRANSVERSAL');
+  
+  // Se não encontrou nada específico além do transversal, carregar todos
+  if (relevantModules.size === 1) {
+    return []; // Retorna vazio para indicar "carregar todos"
+  }
+  
+  return Array.from(relevantModules);
+}
+
+// Classificar módulos usando IA (fallback para casos complexos)
+async function classifyModulesWithAI(
+  userMessage: string, 
+  availableModules: { name: string, variable_name: string }[],
+  apiKey: string
+): Promise<string[]> {
+  try {
+    const moduleList = availableModules.map(m => `- ${m.variable_name}: ${m.name}`).join('\n');
+    
+    const classificationPrompt = `Analise a pergunta do usuário e retorne APENAS os nomes das variáveis dos módulos relevantes, separados por vírgula.
+
+Módulos disponíveis:
+${moduleList}
+
+Pergunta do usuário: "${userMessage}"
+
+Regras:
+- Retorne APENAS os variable_names separados por vírgula, sem explicação
+- Sempre inclua MODULO_TRANSVERSAL
+- Se a pergunta for muito genérica, retorne: TODOS
+
+Resposta (apenas os nomes):`;
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [{ role: 'user', content: classificationPrompt }],
+        max_tokens: 100
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('AI classification failed, loading all modules');
+      return [];
+    }
+
+    const data = await response.json();
+    const result = data.choices[0].message.content.trim();
+    
+    if (result.toUpperCase().includes('TODOS')) {
+      return [];
+    }
+    
+    const moduleNames = result.split(',').map((m: string) => m.trim().toUpperCase());
+    
+    // Validar que os módulos retornados existem
+    const validModules = moduleNames.filter((name: string) => 
+      availableModules.some(m => m.variable_name.toUpperCase() === name)
+    );
+    
+    // Garantir que MODULO_TRANSVERSAL está incluído
+    if (!validModules.includes('MODULO_TRANSVERSAL')) {
+      validModules.push('MODULO_TRANSVERSAL');
+    }
+    
+    return validModules.length > 0 ? validModules : [];
+  } catch (error) {
+    console.error('Error in AI classification:', error);
+    return [];
+  }
+}
+
+// Função principal de classificação (híbrida)
+async function classifyRelevantModules(
+  userMessage: string,
+  availableModules: { name: string, variable_name: string }[],
+  apiKey: string
+): Promise<{ modules: string[], method: 'keywords' | 'ai' | 'all' }> {
+  // Primeiro: tentar classificação por palavras-chave (custo zero)
+  const keywordModules = classifyModulesByKeywords(userMessage);
+  
+  if (keywordModules.length > 0) {
+    console.log(`Module classification by keywords: ${keywordModules.join(', ')}`);
+    return { modules: keywordModules, method: 'keywords' };
+  }
+  
+  // Se palavras-chave não funcionaram, usar IA para classificar
+  console.log('Keywords inconclusive, trying AI classification...');
+  const aiModules = await classifyModulesWithAI(userMessage, availableModules, apiKey);
+  
+  if (aiModules.length > 0) {
+    console.log(`Module classification by AI: ${aiModules.join(', ')}`);
+    return { modules: aiModules, method: 'ai' };
+  }
+  
+  // Fallback: carregar todos os módulos
+  console.log('Loading all modules (fallback)');
+  return { modules: [], method: 'all' };
 }
 
 // Gerar índice de módulos
@@ -370,7 +532,13 @@ function buildModuleContent(module: any): string {
   return content;
 }
 
-async function getSystemPrompt(supabase: any, userContext?: UserContext, dbContext?: string): Promise<string> {
+async function getSystemPrompt(
+  supabase: any, 
+  userContext?: UserContext, 
+  dbContext?: string,
+  userMessage?: string,
+  apiKey?: string
+): Promise<{ prompt: string, modulesUsed: string[], classificationMethod: 'keywords' | 'ai' | 'all' }> {
   try {
     // Buscar prompt customizado do banco
     const { data: promptData, error } = await supabase
@@ -382,7 +550,11 @@ async function getSystemPrompt(supabase: any, userContext?: UserContext, dbConte
 
     if (error || !promptData?.content) {
       console.log('No custom prompt found, using fallback');
-      return buildSystemPrompt(userContext, dbContext);
+      return { 
+        prompt: buildSystemPrompt(userContext, dbContext), 
+        modulesUsed: [], 
+        classificationMethod: 'all' 
+      };
     }
 
     console.log('Using custom prompt from database');
@@ -392,7 +564,23 @@ async function getSystemPrompt(supabase: any, userContext?: UserContext, dbConte
     
     // Buscar módulos de conhecimento
     const { modules, config } = await getKnowledgeModules(supabase);
-    console.log(`Loaded ${modules.length} knowledge modules`);
+    console.log(`Found ${modules.length} knowledge modules`);
+    
+    // Classificar quais módulos são relevantes para a pergunta do usuário
+    let modulesUsed: string[] = [];
+    let classificationMethod: 'keywords' | 'ai' | 'all' = 'all';
+    
+    if (userMessage && apiKey && modules.length > 0) {
+      const classification = await classifyRelevantModules(
+        userMessage,
+        modules.map(m => ({ name: m.name, variable_name: m.variable_name })),
+        apiKey
+      );
+      modulesUsed = classification.modules;
+      classificationMethod = classification.method;
+    }
+    
+    const loadAllModules = modulesUsed.length === 0;
     
     // Substituir {{VERSAO_MODULOS}}
     const globalVersion = config['VERSAO_MODULOS'] || '1.0';
@@ -402,12 +590,29 @@ async function getSystemPrompt(supabase: any, userContext?: UserContext, dbConte
     const moduleIndex = buildModuleIndex(modules);
     customPrompt = customPrompt.replace(/\{\{INDICE_DE_MODULOS\}\}/g, moduleIndex);
     
-    // Substituir variáveis de cada módulo (ex: {{MODULO_CRM_SALES}})
+    // Substituir variáveis de cada módulo (carrega apenas os relevantes)
+    let loadedModulesCount = 0;
     for (const module of modules) {
-      const moduleContent = buildModuleContent(module);
       const regex = new RegExp(`\\{\\{${module.variable_name}\\}\\}`, 'g');
-      customPrompt = customPrompt.replace(regex, moduleContent);
+      
+      const shouldLoad = loadAllModules || modulesUsed.some(
+        m => m.toUpperCase() === module.variable_name.toUpperCase()
+      );
+      
+      if (shouldLoad) {
+        // Carrega o conteúdo completo do módulo
+        const moduleContent = buildModuleContent(module);
+        customPrompt = customPrompt.replace(regex, moduleContent);
+        loadedModulesCount++;
+      } else {
+        // Substitui por placeholder indicando que o módulo existe mas não foi carregado
+        customPrompt = customPrompt.replace(regex, 
+          `[📁 Módulo "${module.name}" disponível - não carregado para esta consulta. Se precisar de informações deste módulo, pergunte especificamente sobre ${module.name.toLowerCase()}.]\n`
+        );
+      }
     }
+    
+    console.log(`Loaded ${loadedModulesCount} of ${modules.length} modules (${loadAllModules ? 'all' : 'selective'})`);
     
     // Substituir {{database_context}}
     if (dbContext) {
@@ -441,10 +646,18 @@ async function getSystemPrompt(supabase: any, userContext?: UserContext, dbConte
       customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, 'Usuário');
     }
     
-    return customPrompt;
+    return { 
+      prompt: customPrompt, 
+      modulesUsed: loadAllModules ? modules.map(m => m.variable_name) : modulesUsed,
+      classificationMethod 
+    };
   } catch (error) {
     console.error('Error fetching custom prompt:', error);
-    return buildSystemPrompt(userContext, dbContext);
+    return { 
+      prompt: buildSystemPrompt(userContext, dbContext), 
+      modulesUsed: [], 
+      classificationMethod: 'all' 
+    };
   }
 }
 
