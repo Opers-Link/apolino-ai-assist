@@ -648,7 +648,7 @@ const Admin = () => {
             </div>
 
             {/* Seção de Insights */}
-            <InsightsPanel dateFilter={dateFilter} />
+            <InsightsPanel dateFilter={dateFilter} metrics={stats} />
     </div>
   );
 

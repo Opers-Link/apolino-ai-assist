@@ -14,12 +14,21 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, Loader2, Send } from 'lucide-react';
 
+interface MetricsData {
+  totalConversations: number;
+  totalMessages: number;
+  activeConversations: number;
+  aiRequests: number;
+  avgAiRequestsPerConversation: number;
+}
+
 interface EmailInsightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   insightId: string;
   insightTitle: string;
   insightType?: 'manual' | 'conversation';
+  metrics?: MetricsData;
 }
 
 export function EmailInsightDialog({
@@ -28,6 +37,7 @@ export function EmailInsightDialog({
   insightId,
   insightTitle,
   insightType = 'manual',
+  metrics,
 }: EmailInsightDialogProps) {
   const [recipients, setRecipients] = useState('');
   const [sending, setSending] = useState(false);
@@ -77,6 +87,7 @@ export function EmailInsightDialog({
           insight_id: insightId,
           recipients: emailList,
           insight_type: insightType,
+          metrics: metrics,
         },
       });
 
