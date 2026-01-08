@@ -1,3 +1,4 @@
+// Manual Insights Panel - PDF Export & Email functionality
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
