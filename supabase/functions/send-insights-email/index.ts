@@ -276,9 +276,9 @@ const handler = async (req: Request): Promise<Response> => {
 </html>
     `;
 
-    // Enviar e-mail
+    // Enviar e-mail - usando domínio de teste do Resend até verificar apolar.com.br
     const emailResponse = await resend.emails.send({
-      from: "Apolar Insights <tabata@apolar.com.br>",
+      from: "Apolar Insights <onboarding@resend.dev>",
       to: recipients.map(e => e.trim()),
       subject: `📊 Insights: ${insight.title}`,
       html: emailHtml,
