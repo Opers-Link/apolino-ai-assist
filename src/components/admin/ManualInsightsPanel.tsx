@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileUploadZone, UploadedFile } from './FileUploadZone';
 import { ManualInsightsHistory } from './ManualInsightsHistory';
+import { EmailInsightDialog } from './EmailInsightDialog';
 import { 
   Sparkles, 
   FileUp, 
@@ -22,10 +23,14 @@ import {
   ThumbsUp,
   ThumbsDown,
   Meh,
-  Loader2
+  Loader2,
+  FileDown,
+  Mail
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface InsightsData {
   summary: string;
@@ -55,7 +60,49 @@ export function ManualInsightsPanel() {
   const [generating, setGenerating] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState<SelectedInsight | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const handleExportPdf = async () => {
+    if (!resultsRef.current || !selectedInsight) return;
+
+    setExportingPdf(true);
+    try {
+      const canvas = await html2canvas(resultsRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      
+      const fileName = `${selectedInsight.title.replace(/[^a-zA-Z0-9]/g, '-')}-insights.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: 'PDF exportado!',
+        description: `Arquivo "${fileName}" baixado com sucesso`,
+      });
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      toast({
+        title: 'Erro ao exportar PDF',
+        description: 'Não foi possível gerar o arquivo PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!title.trim()) {
@@ -275,16 +322,41 @@ export function ManualInsightsPanel() {
       </div>
 
       {/* Resultados */}
-      {insights && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
+      {insights && selectedInsight && (
+        <div className="space-y-6" ref={resultsRef}>
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <h2 className="text-xl font-semibold text-apolar-blue flex items-center gap-2">
               <Lightbulb className="h-5 w-5" />
               {selectedInsight.title}
             </h2>
-            <Badge variant="outline">
-              {selectedInsight.file_count} arquivo(s) • {selectedInsight.total_records} registros
-            </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline">
+                {selectedInsight.file_count} arquivo(s) • {selectedInsight.total_records} registros
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="gap-2"
+              >
+                {exportingPdf ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                Exportar PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEmailDialogOpen(true)}
+                className="gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Enviar por E-mail
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -458,6 +530,16 @@ export function ManualInsightsPanel() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Dialog de envio por e-mail */}
+      {selectedInsight && (
+        <EmailInsightDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          insightId={selectedInsight.id}
+          insightTitle={selectedInsight.title}
+        />
       )}
     </div>
   );
