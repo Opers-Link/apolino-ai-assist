@@ -18,5 +18,5 @@ verify_jwt = false
 [functions.invite-user]
 verify_jwt = true
 
-[functions.invite-user]
-verify_jwt = true
+[functions.send-insights-email]
+verify_jwt = false
