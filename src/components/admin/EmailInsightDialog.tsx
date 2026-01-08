@@ -19,6 +19,7 @@ interface EmailInsightDialogProps {
   onOpenChange: (open: boolean) => void;
   insightId: string;
   insightTitle: string;
+  insightType?: 'manual' | 'conversation';
 }
 
 export function EmailInsightDialog({
@@ -26,6 +27,7 @@ export function EmailInsightDialog({
   onOpenChange,
   insightId,
   insightTitle,
+  insightType = 'manual',
 }: EmailInsightDialogProps) {
   const [recipients, setRecipients] = useState('');
   const [sending, setSending] = useState(false);
@@ -74,6 +76,7 @@ export function EmailInsightDialog({
         body: {
           insight_id: insightId,
           recipients: emailList,
+          insight_type: insightType,
         },
       });
 

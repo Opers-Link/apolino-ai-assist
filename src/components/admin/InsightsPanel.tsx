@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DateRangeFilter } from './DateRangeFilter';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Sparkles, 
@@ -17,10 +16,15 @@ import {
   MessageSquare,
   PieChart,
   Clock,
-  CheckCircle
+  CheckCircle,
+  FileDown,
+  Mail
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { EmailInsightDialog } from './EmailInsightDialog';
 
 interface InsightsData {
   summary: string;
@@ -45,23 +49,20 @@ interface InsightsPanelProps {
   dateFilter?: { startDate: Date | null; endDate: Date | null };
 }
 
-export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: externalFilter }) => {
+export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter }) => {
   const [insights, setInsights] = useState<ConversationInsight | null>(null);
   const [insightsHistory, setInsightsHistory] = useState<ConversationInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [internalDateFilter, setInternalDateFilter] = useState<{ startDate: Date | null; endDate: Date | null }>({
-    startDate: subDays(new Date(), 7),
-    endDate: new Date()
-  });
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Usar filtro externo se fornecido, senão usar interno
-  const effectiveDateFilter = externalFilter?.startDate && externalFilter?.endDate
-    ? externalFilter
-    : internalDateFilter;
-  
-  const showInternalFilter = !externalFilter?.startDate;
+  // Usar filtro externo ou padrão de 7 dias
+  const effectiveDateFilter = dateFilter?.startDate && dateFilter?.endDate
+    ? dateFilter
+    : { startDate: subDays(new Date(), 7), endDate: new Date() };
 
   useEffect(() => {
     loadInsightsHistory();
@@ -78,7 +79,6 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: extern
 
       if (error) throw error;
 
-      // Type assertion since we know the structure matches
       const typedData = data as unknown as ConversationInsight[];
       setInsightsHistory(typedData || []);
       
@@ -135,8 +135,61 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: extern
     }
   };
 
-  const handleDateFilterChange = (startDate: Date | null, endDate: Date | null) => {
-    setInternalDateFilter({ startDate, endDate });
+  const handleExportPdf = async () => {
+    if (!insights || !contentRef.current) {
+      toast({
+        title: 'Nenhum insight para exportar',
+        description: 'Gere um insight primeiro.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setExportingPdf(true);
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pdf.internal.pageSize.getHeight();
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pdf.internal.pageSize.getHeight();
+      }
+
+      const periodStart = format(new Date(insights.period_start), 'dd-MM-yyyy');
+      const periodEnd = format(new Date(insights.period_end), 'dd-MM-yyyy');
+      pdf.save(`insights-conversas-${periodStart}-a-${periodEnd}.pdf`);
+
+      toast({
+        title: 'PDF exportado!',
+        description: 'O arquivo foi baixado com sucesso.',
+      });
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      toast({
+        title: 'Erro ao exportar',
+        description: 'Não foi possível gerar o PDF.',
+        variant: 'destructive'
+      });
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const selectInsight = (insight: ConversationInsight) => {
@@ -170,33 +223,63 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: extern
 
   return (
     <div className="space-y-6">
-      {/* Header com filtros e botão de gerar */}
+      {/* Header com botão de gerar e ações */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-apolar-blue/10">
-        {showInternalFilter ? (
-          <DateRangeFilter onFilterChange={handleDateFilterChange} />
-        ) : (
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-apolar-blue" />
-            <span className="font-medium text-apolar-blue">Insights do Período</span>
-          </div>
-        )}
-        <Button 
-          onClick={handleGenerateInsights} 
-          disabled={generating}
-          className="bg-gradient-to-r from-apolar-blue to-apolar-blue-dark hover:opacity-90"
-        >
-          {generating ? (
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-apolar-blue" />
+          <span className="font-medium text-apolar-blue">Insights do Período</span>
+          {effectiveDateFilter.startDate && effectiveDateFilter.endDate && (
+            <Badge variant="outline" className="ml-2">
+              {format(effectiveDateFilter.startDate, 'dd/MM', { locale: ptBR })} - {format(effectiveDateFilter.endDate, 'dd/MM', { locale: ptBR })}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {insights && (
             <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Analisando...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Gerar Insights
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="border-apolar-blue/30 hover:bg-apolar-blue/10"
+              >
+                {exportingPdf ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4 mr-2" />
+                )}
+                Exportar PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEmailDialogOpen(true)}
+                className="border-apolar-blue/30 hover:bg-apolar-blue/10"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Enviar por E-mail
+              </Button>
             </>
           )}
-        </Button>
+          <Button 
+            onClick={handleGenerateInsights} 
+            disabled={generating}
+            className="bg-gradient-to-r from-apolar-blue to-apolar-blue-dark hover:opacity-90"
+          >
+            {generating ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Gerar Insights
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {!insights ? (
@@ -205,12 +288,12 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: extern
             <Sparkles className="h-16 w-16 text-apolar-blue/30 mb-4" />
             <h3 className="text-lg font-semibold text-apolar-blue mb-2">Nenhum insight disponível</h3>
             <p className="text-muted-foreground text-center max-w-md">
-              Selecione um período e clique em "Gerar Insights" para analisar as conversas com IA.
+              Selecione um período no filtro acima e clique em "Gerar Insights" para analisar as conversas com IA.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna principal - Insights */}
           <div className="lg:col-span-2 space-y-6">
             {/* Resumo Executivo */}
@@ -434,6 +517,17 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter: extern
             </Card>
           </div>
         </div>
+      )}
+
+      {/* Dialog de envio por e-mail */}
+      {insights && (
+        <EmailInsightDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          insightId={insights.id}
+          insightTitle={`Insights ${format(new Date(insights.period_start), 'dd/MM', { locale: ptBR })} - ${format(new Date(insights.period_end), 'dd/MM', { locale: ptBR })}`}
+          insightType="conversation"
+        />
       )}
     </div>
   );
