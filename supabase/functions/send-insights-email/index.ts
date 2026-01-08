@@ -7,10 +7,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface MetricsData {
+  totalConversations: number;
+  totalMessages: number;
+  activeConversations: number;
+  aiRequests: number;
+  avgAiRequestsPerConversation: number;
+}
+
 interface RequestPayload {
   insight_id: string;
   recipients: string[];
   insight_type?: 'manual' | 'conversation';
+  metrics?: MetricsData;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -70,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Obter payload
-    const { insight_id, recipients, insight_type = 'manual' }: RequestPayload = await req.json();
+    const { insight_id, recipients, insight_type = 'manual', metrics }: RequestPayload = await req.json();
 
     if (!insight_id || !recipients || recipients.length === 0) {
       return new Response(
@@ -177,6 +186,39 @@ const handler = async (req: Request): Promise<Response> => {
     </div>
     
     <div class="content">
+      <!-- Métricas do Período -->
+      ${metrics ? `
+      <div class="section">
+        <div class="section-title">📈 Métricas do Período</div>
+        <table>
+          <tr>
+            <th>Métrica</th>
+            <th>Valor</th>
+          </tr>
+          <tr>
+            <td>Total de Conversas</td>
+            <td><strong>${metrics.totalConversations}</strong></td>
+          </tr>
+          <tr>
+            <td>Total de Mensagens</td>
+            <td><strong>${metrics.totalMessages}</strong></td>
+          </tr>
+          <tr>
+            <td>Conversas Ativas</td>
+            <td><strong>${metrics.activeConversations}</strong></td>
+          </tr>
+          <tr>
+            <td>Requisições de IA</td>
+            <td><strong>${metrics.aiRequests}</strong></td>
+          </tr>
+          <tr>
+            <td>Requisições por Conversa</td>
+            <td><strong>${metrics.avgAiRequestsPerConversation}</strong></td>
+          </tr>
+        </table>
+      </div>
+      ` : ''}
+
       <!-- Resumo Executivo -->
       <div class="section">
         <div class="section-title">📋 Resumo Executivo</div>

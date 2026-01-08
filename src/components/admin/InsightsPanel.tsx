@@ -45,11 +45,20 @@ interface ConversationInsight {
   message_count: number;
 }
 
-interface InsightsPanelProps {
-  dateFilter?: { startDate: Date | null; endDate: Date | null };
+interface MetricsData {
+  totalConversations: number;
+  totalMessages: number;
+  activeConversations: number;
+  aiRequests: number;
+  avgAiRequestsPerConversation: number;
 }
 
-export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter }) => {
+interface InsightsPanelProps {
+  dateFilter?: { startDate: Date | null; endDate: Date | null };
+  metrics?: MetricsData;
+}
+
+export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter, metrics }) => {
   const [insights, setInsights] = useState<ConversationInsight | null>(null);
   const [insightsHistory, setInsightsHistory] = useState<ConversationInsight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -296,6 +305,42 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter }) => {
         <div ref={contentRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna principal - Insights */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Métricas do Período */}
+            {metrics && (
+              <Card className="bg-gradient-to-br from-apolar-gold/10 to-white border-apolar-gold/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-apolar-blue">
+                    <TrendingUp className="h-5 w-5" />
+                    Métricas do Período
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="text-center p-3 bg-white/60 rounded-lg border border-apolar-blue/10">
+                      <p className="text-2xl font-bold text-apolar-blue">{metrics.totalConversations}</p>
+                      <p className="text-xs text-muted-foreground">Conversas</p>
+                    </div>
+                    <div className="text-center p-3 bg-white/60 rounded-lg border border-apolar-blue/10">
+                      <p className="text-2xl font-bold text-apolar-blue">{metrics.totalMessages}</p>
+                      <p className="text-xs text-muted-foreground">Mensagens</p>
+                    </div>
+                    <div className="text-center p-3 bg-white/60 rounded-lg border border-apolar-blue/10">
+                      <p className="text-2xl font-bold text-green-600">{metrics.activeConversations}</p>
+                      <p className="text-xs text-muted-foreground">Ativas</p>
+                    </div>
+                    <div className="text-center p-3 bg-white/60 rounded-lg border border-apolar-blue/10">
+                      <p className="text-2xl font-bold text-apolar-blue">{metrics.aiRequests}</p>
+                      <p className="text-xs text-muted-foreground">Req. IA</p>
+                    </div>
+                    <div className="text-center p-3 bg-white/60 rounded-lg border border-apolar-blue/10">
+                      <p className="text-2xl font-bold text-apolar-blue">{metrics.avgAiRequestsPerConversation}</p>
+                      <p className="text-xs text-muted-foreground">Req./Conv.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             {/* Resumo Executivo */}
             <Card className="bg-gradient-to-br from-apolar-blue/5 to-white border-apolar-blue/20">
               <CardHeader className="pb-3">
@@ -527,6 +572,7 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter }) => {
           insightId={insights.id}
           insightTitle={`Insights ${format(new Date(insights.period_start), 'dd/MM', { locale: ptBR })} - ${format(new Date(insights.period_end), 'dd/MM', { locale: ptBR })}`}
           insightType="conversation"
+          metrics={metrics}
         />
       )}
     </div>
