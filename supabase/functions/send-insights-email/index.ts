@@ -10,6 +10,7 @@ const corsHeaders = {
 interface RequestPayload {
   insight_id: string;
   recipients: string[];
+  insight_type?: 'manual' | 'conversation';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -69,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Obter payload
-    const { insight_id, recipients }: RequestPayload = await req.json();
+    const { insight_id, recipients, insight_type = 'manual' }: RequestPayload = await req.json();
 
     if (!insight_id || !recipients || recipients.length === 0) {
       return new Response(
@@ -89,9 +90,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Buscar insight
+    // Buscar insight da tabela correta
+    const tableName = insight_type === 'conversation' ? 'conversation_insights' : 'manual_insights';
     const { data: insight, error: insightError } = await supabaseAdmin
-      .from("manual_insights")
+      .from(tableName)
       .select("*")
       .eq("id", insight_id)
       .single();
@@ -116,6 +118,11 @@ const handler = async (req: Request): Promise<Response> => {
     const periodText = insight.period_start && insight.period_end
       ? `${new Date(insight.period_start).toLocaleDateString('pt-BR')} a ${new Date(insight.period_end).toLocaleDateString('pt-BR')}`
       : 'Período não especificado';
+
+    // Título e descrição - compatível com ambos os tipos
+    const insightTitle = insight.title || `Insights de Conversas - ${periodText}`;
+    const insightDescription = insight.description || 'Relatório de Insights gerado automaticamente';
+    const generatedAt = insight.generated_at || new Date().toISOString();
 
     // Gerar HTML do e-mail
     const emailHtml = `
@@ -165,8 +172,8 @@ const handler = async (req: Request): Promise<Response> => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>📊 ${insight.title}</h1>
-      <p>${insight.description || 'Relatório de Insights'} | ${periodText}</p>
+      <h1>📊 ${insightTitle}</h1>
+      <p>${insightDescription} | ${periodText}</p>
     </div>
     
     <div class="content">
@@ -268,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
     </div>
 
     <div class="footer">
-      <p><strong>Apolar Imóveis</strong> | Relatório gerado em ${new Date(insight.generated_at).toLocaleString('pt-BR')}</p>
+      <p><strong>Apolar Imóveis</strong> | Relatório gerado em ${new Date(generatedAt).toLocaleString('pt-BR')}</p>
       <p>Este e-mail foi enviado automaticamente pelo sistema Apolino AI.</p>
     </div>
   </div>
@@ -280,7 +287,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Apolar Insights <onboarding@resend.dev>",
       to: recipients.map(e => e.trim()),
-      subject: `📊 Insights: ${insight.title}`,
+      subject: `📊 ${insightTitle}`,
       html: emailHtml,
     });
 
