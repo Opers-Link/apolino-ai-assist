@@ -297,6 +297,48 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_insights: {
+        Row: {
+          description: string | null
+          file_count: number | null
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          insights_data: Json
+          period_end: string | null
+          period_start: string | null
+          source_files: Json
+          title: string
+          total_records: number | null
+        }
+        Insert: {
+          description?: string | null
+          file_count?: number | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          insights_data: Json
+          period_end?: string | null
+          period_start?: string | null
+          source_files?: Json
+          title: string
+          total_records?: number | null
+        }
+        Update: {
+          description?: string | null
+          file_count?: number | null
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          insights_data?: Json
+          period_end?: string | null
+          period_start?: string | null
+          source_files?: Json
+          title?: string
+          total_records?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
