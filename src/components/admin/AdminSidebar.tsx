@@ -87,8 +87,8 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
             <img 
               src={aiaLogo} 
               alt="AIA Logo" 
-              className="h-12 w-12 object-contain drop-shadow-[0_0_8px_rgba(255,204,0,0.6)]"
-              style={{ filter: 'brightness(0) saturate(100%) invert(78%) sepia(98%) saturate(1000%) hue-rotate(360deg) brightness(105%) contrast(105%)' }}
+              className="h-12 w-12 object-contain drop-shadow-[0_0_10px_rgba(255,204,0,0.5)]"
+              style={{ filter: 'brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(95%) contrast(95%)' }}
             />
           </div>
           <div className="text-white flex-1">
