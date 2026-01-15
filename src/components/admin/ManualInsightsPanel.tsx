@@ -85,6 +85,7 @@ export function ManualInsightsPanel() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -182,6 +183,7 @@ export function ManualInsightsPanel() {
         body: {
           title: title.trim(),
           description: description.trim() || undefined,
+          custom_prompt: customPrompt.trim() || undefined,
           period_start: periodStart || undefined,
           period_end: periodEnd || undefined,
           files: uploadedFiles,
@@ -203,6 +205,7 @@ export function ManualInsightsPanel() {
       setFiles([]);
       setTitle('');
       setDescription('');
+      setCustomPrompt('');
       setPeriodStart('');
       setPeriodEnd('');
       
@@ -302,8 +305,27 @@ export function ManualInsightsPanel() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={generating}
-                  rows={3}
+                  rows={2}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="customPrompt" className="flex items-center gap-2">
+                  Instruções para Análise
+                  <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Textarea
+                  id="customPrompt"
+                  placeholder="Direcione a análise. Ex: Foque em problemas de integração, ignore tickets de treinamento, priorize reclamações de corretores, analise apenas falhas do sistema NET..."
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  disabled={generating}
+                  rows={3}
+                  className="bg-muted/30 border-dashed"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use este campo para direcionar a IA sobre <strong>como analisar</strong> os dados. O campo acima descreve <strong>o que são</strong> os dados.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
