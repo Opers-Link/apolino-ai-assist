@@ -278,7 +278,7 @@ const InsightsPanelComponent: React.FC<InsightsPanelProps> = ({ dateFilter, metr
           <Button 
             onClick={handleGenerateInsights} 
             disabled={generating}
-            className="bg-gradient-to-r from-apolar-blue to-apolar-blue-dark hover:opacity-90"
+            className="bg-gradient-to-r from-apolar-blue to-apolar-blue-dark hover:opacity-90 text-white"
           >
             {generating ? (
               <>
