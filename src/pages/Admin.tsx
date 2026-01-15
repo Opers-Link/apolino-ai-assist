@@ -531,7 +531,7 @@ const Admin = () => {
     <div className="space-y-6">
       <DateRangeFilter onFilterChange={handleDateFilterChange} />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {/* Card - Total Conversas */}
               <Card className="group bg-white rounded-xl shadow-lg border border-apolar-light-gray hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
