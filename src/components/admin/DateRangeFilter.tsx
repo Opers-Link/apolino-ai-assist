@@ -163,7 +163,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
                     size="sm"
                     onClick={handleCustomRange}
                     disabled={!dateRange?.from || !dateRange?.to}
-                    className="bg-gradient-to-r from-apolar-blue to-apolar-blue-dark hover:shadow-lg border-0"
+                    className="bg-gradient-to-r from-apolar-blue to-apolar-blue-dark hover:shadow-lg border-0 text-white"
                   >
                     Aplicar
                   </Button>
