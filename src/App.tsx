@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import ChatWidget from "./pages/ChatWidget";
+import FAQ from "./pages/FAQ";
 import AIAssistant from "@/components/chat/AIAssistant";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -25,8 +26,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/chat-widget" element={<ChatWidget />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route 
-              path="/admin" 
+              path="/admin"
               element={
                 <ProtectedRoute requireAdmin>
                   <Admin />
