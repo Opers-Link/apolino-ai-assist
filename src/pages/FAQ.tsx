@@ -1,177 +1,104 @@
-import { useState, useMemo } from 'react';
-import { Search, ChevronDown, ChevronRight, HelpCircle, ArrowLeft, MessageCircle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, HelpCircle, ArrowLeft, MessageCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { cn } from '@/lib/utils';
 import aiaLogo from '@/assets/aia-logo.png';
+import { supabase } from '@/integrations/supabase/client';
 
-interface FAQItem {
+interface FAQQuestion {
+  id: string;
   question: string;
   answer: string;
 }
 
 interface FAQCategory {
   id: string;
-  title: string;
+  name: string;
   icon: string;
-  description: string;
-  items: FAQItem[];
+  questions: FAQQuestion[];
 }
-
-const faqData: FAQCategory[] = [
-  {
-    id: 'sistemas',
-    title: 'Sistemas e Acessos',
-    icon: '💻',
-    description: 'Dúvidas sobre login, senhas e acesso aos sistemas',
-    items: [
-      {
-        question: 'Como faço para resetar minha senha do sistema?',
-        answer: 'Para resetar sua senha, acesse a tela de login do sistema desejado e clique em "Esqueci minha senha". Um e-mail será enviado com as instruções para criar uma nova senha. Caso não receba o e-mail, verifique a pasta de spam ou entre em contato com o suporte.'
-      },
-      {
-        question: 'Não consigo acessar o CRM Apolar Sales. O que fazer?',
-        answer: 'Verifique se suas credenciais estão corretas. Caso o problema persista, pode ser uma questão de permissão de acesso. Entre em contato com seu gerente ou abra um ticket no Movidesk informando seu nome, e-mail e o sistema que está tentando acessar.'
-      },
-      {
-        question: 'Como solicitar acesso a um novo sistema?',
-        answer: 'A solicitação de acesso deve ser feita pelo seu gerente direto através do Movidesk. O gestor deve abrir um ticket especificando qual sistema, qual usuário e o nível de permissão necessário.'
-      },
-      {
-        question: 'O sistema está muito lento. Como resolver?',
-        answer: 'Primeiro, verifique sua conexão de internet. Tente limpar o cache do navegador (Ctrl+Shift+Delete) e reiniciar o navegador. Se o problema persistir em múltiplas máquinas, pode ser uma instabilidade no servidor - neste caso, abra um ticket informando o horário e sistema afetado.'
-      }
-    ]
-  },
-  {
-    id: 'vendas',
-    title: 'Processos de Vendas',
-    icon: '🏠',
-    description: 'Procedimentos para cadastro e gestão de imóveis',
-    items: [
-      {
-        question: 'Como cadastrar um novo imóvel no sistema?',
-        answer: 'Acesse o módulo de imóveis no CRM Apolar Sales, clique em "Novo Imóvel" e preencha todas as informações obrigatórias: endereço completo, características, valor e dados do proprietário. Não esqueça de adicionar fotos de qualidade para melhor apresentação.'
-      },
-      {
-        question: 'Qual o prazo para atualização de status de proposta?',
-        answer: 'O status da proposta deve ser atualizado em até 24 horas após qualquer alteração. Isso inclui: aceite, contraproposta, recusa ou desistência. Manter os status atualizados é essencial para relatórios gerenciais.'
-      },
-      {
-        question: 'Como gerar o contrato de venda?',
-        answer: 'Após a aprovação da proposta, acesse a aba "Contratos" dentro da ficha do negócio. Clique em "Gerar Contrato" e selecione o modelo adequado. O sistema irá preencher automaticamente os dados. Revise todas as informações antes de imprimir ou enviar.'
-      }
-    ]
-  },
-  {
-    id: 'locacao',
-    title: 'Locação e NET Locação',
-    icon: '📋',
-    description: 'Dúvidas sobre processos de aluguel',
-    items: [
-      {
-        question: 'Como emitir segunda via de boleto para o inquilino?',
-        answer: 'No NET Locação, acesse a ficha do contrato, vá em "Financeiro" e localize o boleto desejado. Clique em "2ª Via" para gerar um novo boleto com data atualizada. O boleto pode ser enviado por e-mail ou impresso.'
-      },
-      {
-        question: 'Como registrar uma manutenção solicitada pelo inquilino?',
-        answer: 'Acesse a ficha do imóvel no NET Locação, clique na aba "Manutenções" e em seguida "Nova Solicitação". Preencha a descrição do problema, urgência e anexe fotos se necessário. A solicitação será direcionada para aprovação do proprietário.'
-      },
-      {
-        question: 'Qual o procedimento para rescisão de contrato?',
-        answer: 'O inquilino deve comunicar a intenção com 30 dias de antecedência. No sistema, acesse o contrato e clique em "Iniciar Rescisão". Preencha a data prevista de saída e motivo. O sistema calculará automaticamente multas e valores pendentes.'
-      },
-      {
-        question: 'Como realizar a vistoria de entrada/saída?',
-        answer: 'Use o aplicativo de vistoria ou o formulário padrão. Fotografe todos os cômodos e itens, anotando o estado de conservação. No sistema, anexe o laudo na aba "Vistorias" do contrato. É obrigatório ter assinatura do inquilino.'
-      }
-    ]
-  },
-  {
-    id: 'marketing',
-    title: 'Marketing e Divulgação',
-    icon: '📢',
-    description: 'Materiais, campanhas e divulgação de imóveis',
-    items: [
-      {
-        question: 'Como solicitar material de marketing personalizado?',
-        answer: 'Acesse o portal de marketing no CRM ou envie um e-mail para marketing@apolar.com.br. Informe o tipo de material (banner, flyer, post), dados do imóvel e prazo desejado. O prazo médio de produção é de 3 dias úteis.'
-      },
-      {
-        question: 'Onde encontro os templates padrão da Apolar?',
-        answer: 'Os templates oficiais estão disponíveis no Google Drive compartilhado do marketing. Acesse através do link no portal do colaborador ou solicite acesso ao seu gerente. É proibido usar templates não oficiais em comunicações da marca.'
-      },
-      {
-        question: 'Como destacar meu imóvel nos portais?',
-        answer: 'A partir do CRM, você pode solicitar destaque em portais. Acesse o imóvel, clique em "Destaque" e selecione os portais desejados. O destaque tem custo adicional que será verificado com a franquia. O prazo para ativação é de 24 a 48 horas.'
-      }
-    ]
-  },
-  {
-    id: 'financeiro',
-    title: 'Financeiro e Comissões',
-    icon: '💰',
-    description: 'Pagamentos, comissões e questões financeiras',
-    items: [
-      {
-        question: 'Quando recebo minha comissão de venda?',
-        answer: 'A comissão é paga após a assinatura do contrato e compensação do sinal. O prazo padrão é de até 10 dias úteis após a documentação completa. Acompanhe o status no módulo "Minhas Comissões" do CRM.'
-      },
-      {
-        question: 'Como consultar meu extrato de comissões?',
-        answer: 'No CRM Apolar Sales, acesse o menu "Financeiro" > "Minhas Comissões". Você verá o histórico completo com valores pagos, pendentes e previsões. Pode filtrar por período e exportar em Excel.'
-      },
-      {
-        question: 'O que fazer se houver divergência no valor da comissão?',
-        answer: 'Primeiro, verifique o contrato e a tabela de comissão vigente. Se confirmar divergência, abra um ticket no Movidesk anexando: número do negócio, valor esperado, valor recebido e justificativa. O financeiro responderá em até 5 dias úteis.'
-      }
-    ]
-  },
-  {
-    id: 'suporte',
-    title: 'Suporte e Atendimento',
-    icon: '🎧',
-    description: 'Como obter ajuda e suporte técnico',
-    items: [
-      {
-        question: 'Como abrir um ticket de suporte?',
-        answer: 'Acesse o Movidesk (apolar.movidesk.com), faça login com suas credenciais e clique em "Novo Ticket". Descreva o problema detalhadamente, inclua prints se possível e selecione a categoria correta. Quanto mais informações, mais rápido será o atendimento.'
-      },
-      {
-        question: 'Qual o tempo de resposta do suporte?',
-        answer: 'O SLA padrão é: Urgente (sistema parado) - 2 horas; Alta prioridade - 4 horas; Média - 8 horas; Baixa - 24 horas. Estes prazos são para primeira resposta. A resolução pode variar conforme complexidade.'
-      },
-      {
-        question: 'Posso ligar para o suporte?',
-        answer: 'O atendimento prioritário é via Movidesk para melhor rastreamento. Em casos críticos (sistema totalmente indisponível afetando operação), você pode acionar o suporte por telefone. O número está disponível no portal do colaborador.'
-      }
-    ]
-  }
-];
 
 const FAQ = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<FAQCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadFAQData();
+  }, []);
+
+  const loadFAQData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load active categories
+      const { data: categoriesData, error: catError } = await supabase
+        .from('faq_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (catError) throw catError;
+      
+      // Load active questions
+      const { data: questionsData, error: qError } = await supabase
+        .from('faq_questions')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (qError) throw qError;
+      
+      // Combine data
+      const categoriesWithQuestions = (categoriesData || []).map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        icon: cat.icon,
+        questions: (questionsData || [])
+          .filter(q => q.category_id === cat.id)
+          .map(q => ({
+            id: q.id,
+            question: q.question,
+            answer: q.answer
+          }))
+      })).filter(cat => cat.questions.length > 0); // Only show categories with questions
+      
+      setCategories(categoriesWithQuestions);
+    } catch (error) {
+      console.error('Erro ao carregar FAQ:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) return faqData;
+    if (!searchTerm.trim()) return categories;
 
     const term = searchTerm.toLowerCase();
     
-    return faqData
+    return categories
       .map(category => ({
         ...category,
-        items: category.items.filter(
+        questions: category.questions.filter(
           item =>
             item.question.toLowerCase().includes(term) ||
             item.answer.toLowerCase().includes(term)
         )
       }))
-      .filter(category => category.items.length > 0);
-  }, [searchTerm]);
+      .filter(category => category.questions.length > 0);
+  }, [searchTerm, categories]);
 
-  const totalQuestions = faqData.reduce((acc, cat) => acc + cat.items.length, 0);
+  const totalQuestions = categories.reduce((acc, cat) => acc + cat.questions.length, 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-apolar-blue/5 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-apolar-blue" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-apolar-blue/5">
@@ -226,14 +153,34 @@ const FAQ = () => {
           </div>
           
           <p className="text-sm text-white/60 mt-4">
-            {totalQuestions} perguntas em {faqData.length} categorias
+            {totalQuestions} perguntas em {categories.length} categorias
           </p>
         </div>
       </section>
 
       {/* Categories */}
       <main className="max-w-5xl mx-auto px-4 py-8 md:py-12">
-        {searchTerm && filteredCategories.length === 0 ? (
+        {categories.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <HelpCircle className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-800 mb-2">
+              Nenhuma pergunta disponível
+            </h3>
+            <p className="text-gray-500 mb-4">
+              O FAQ ainda está sendo configurado. Tente novamente mais tarde.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => window.history.back()}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+          </div>
+        ) : searchTerm && filteredCategories.length === 0 ? (
           <div className="text-center py-12">
             <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <Search className="h-8 w-8 text-gray-400" />
@@ -257,7 +204,7 @@ const FAQ = () => {
             {/* Category Grid */}
             {!searchTerm && !selectedCategory && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {faqData.map((category) => (
+                {categories.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
@@ -265,14 +212,10 @@ const FAQ = () => {
                   >
                     <span className="text-3xl mb-3 block">{category.icon}</span>
                     <h3 className="font-semibold text-gray-800 mb-1 group-hover:text-apolar-blue transition-colors">
-                      {category.title}
+                      {category.name}
                     </h3>
-                    <p className="text-sm text-gray-500 mb-3">
-                      {category.description}
-                    </p>
-                    <div className="flex items-center gap-1 text-xs text-apolar-blue font-medium">
-                      <span>{category.items.length} perguntas</span>
-                      <ChevronRight className="h-3 w-3" />
+                    <div className="flex items-center gap-1 text-xs text-apolar-blue font-medium mt-2">
+                      <span>{category.questions.length} perguntas</span>
                     </div>
                   </button>
                 ))}
@@ -295,23 +238,23 @@ const FAQ = () => {
                 )}
 
                 <div className="space-y-6">
-                  {(searchTerm ? filteredCategories : faqData.filter(c => c.id === selectedCategory)).map((category) => (
+                  {(searchTerm ? filteredCategories : categories.filter(c => c.id === selectedCategory)).map((category) => (
                     <div key={category.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                       <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{category.icon}</span>
                           <div>
-                            <h2 className="font-semibold text-gray-800">{category.title}</h2>
-                            <p className="text-sm text-gray-500">{category.items.length} perguntas</p>
+                            <h2 className="font-semibold text-gray-800">{category.name}</h2>
+                            <p className="text-sm text-gray-500">{category.questions.length} perguntas</p>
                           </div>
                         </div>
                       </div>
                       
                       <Accordion type="single" collapsible className="px-6">
-                        {category.items.map((item, index) => (
+                        {category.questions.map((item, index) => (
                           <AccordionItem 
-                            key={index} 
-                            value={`${category.id}-${index}`}
+                            key={item.id} 
+                            value={item.id}
                             className="border-b border-gray-100 last:border-0"
                           >
                             <AccordionTrigger className="py-4 text-left hover:no-underline group">

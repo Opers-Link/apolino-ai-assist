@@ -19,6 +19,8 @@ const getTabTitle = (tab: string) => {
       return 'Insights Manual';
     case 'settings':
       return 'Configurações';
+    case 'faq':
+      return 'Gerenciar FAQ';
     case 'users':
       return 'Usuários';
     default:

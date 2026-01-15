@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, UserCircle, Settings, Users, FileUp } from "lucide-react";
+import { LayoutDashboard, MessageSquare, UserCircle, Settings, Users, FileUp, HelpCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
@@ -44,6 +44,11 @@ const settingsMenuItems = [
     title: "Configurações",
     icon: Settings,
     value: "settings",
+  },
+  {
+    title: "FAQ",
+    icon: HelpCircle,
+    value: "faq",
   },
   {
     title: "Usuários",
