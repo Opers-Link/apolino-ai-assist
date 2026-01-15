@@ -26,7 +26,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false); // Usado apenas durante criação no envio
   const [messageCount, setMessageCount] = useState(0);
   const [sessionId, setSessionId] = useState<string>('');
   const [conversationId, setConversationId] = useState<string>('');
@@ -45,15 +45,14 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     window.open(MOVIDESK_URL, '_blank');
   };
 
-  // Recuperar ou criar conversa ao abrir o chat
+  // Recuperar conversa existente ao abrir o chat (sem criar nova)
   useEffect(() => {
-    if (isOpen && !conversationId) {
-      recoverOrCreateConversation();
+    if (isOpen) {
+      recoverExistingConversation();
     }
   }, [isOpen]);
 
-  const recoverOrCreateConversation = async () => {
-    setIsCreatingConversation(true);
+  const recoverExistingConversation = async () => {
     try {
       // Tentar recuperar conversa ativa do localStorage
       const storedConversationId = localStorage.getItem('aia_conversation_id');
@@ -74,22 +73,16 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
           
           // Recuperar mensagens existentes
           await loadExistingMessages(existingConversation.id);
-          setIsCreatingConversation(false);
           return;
         } else {
           // Conversa não existe mais ou está fechada, limpar localStorage
           localStorage.removeItem('aia_conversation_id');
         }
       }
-
-      // Criar nova conversa
-      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      setSessionId(newSessionId);
-      await createConversation(newSessionId);
+      
+      // Não cria conversa automaticamente - será criada no primeiro envio de mensagem
     } catch (error) {
-      console.error('Erro ao recuperar/criar conversa:', error);
-    } finally {
-      setIsCreatingConversation(false);
+      console.error('Erro ao recuperar conversa:', error);
     }
   };
 
@@ -222,7 +215,14 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   };
 
   const handleRequestHumanHelp = async () => {
-    if (!conversationId) return;
+    // Só permite solicitar ajuda se já existe uma conversa (usuário enviou pelo menos 1 mensagem)
+    if (!conversationId) {
+      toast({
+        title: "Envie uma mensagem primeiro",
+        description: "Por favor, descreva seu problema antes de solicitar um atendente.",
+      });
+      return;
+    }
   
     try {
       await supabase
@@ -424,9 +424,11 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
       setAiDisabled(false);
       localStorage.removeItem('aia_conversation_id');
       
+      setIsCreatingConversation(true);
       const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(newSessionId);
       const newConversationId = await createConversation(newSessionId);
+      setIsCreatingConversation(false);
       
       if (!newConversationId) {
         toast({
@@ -453,11 +455,13 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     let currentConversationId = conversationId;
     
     if (!currentConversationId) {
-      // Se não tem conversa ainda, criar uma agora e aguardar
+      // Se não tem conversa ainda, criar uma agora (lazy loading)
+      setIsCreatingConversation(true);
       const newSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       if (!sessionId) setSessionId(newSessionId);
       
       currentConversationId = await createConversation(newSessionId);
+      setIsCreatingConversation(false);
       
       if (!currentConversationId) {
         toast({
