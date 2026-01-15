@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ interface InsightsPanelProps {
   metrics?: MetricsData;
 }
 
-export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter, metrics }) => {
+const InsightsPanelComponent: React.FC<InsightsPanelProps> = ({ dateFilter, metrics }) => {
   const [insights, setInsights] = useState<ConversationInsight | null>(null);
   const [insightsHistory, setInsightsHistory] = useState<ConversationInsight[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,11 +68,15 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter, metric
   const contentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Usar filtro externo ou padrão de 7 dias
-  const effectiveDateFilter = dateFilter?.startDate && dateFilter?.endDate
-    ? dateFilter
-    : { startDate: subDays(new Date(), 7), endDate: new Date() };
+  // Memoizar filtro efetivo - usar filtro externo ou padrão de 7 dias
+  const effectiveDateFilter = useMemo(() => {
+    if (dateFilter?.startDate && dateFilter?.endDate) {
+      return dateFilter;
+    }
+    return { startDate: subDays(new Date(), 7), endDate: new Date() };
+  }, [dateFilter?.startDate, dateFilter?.endDate]);
 
+  // Carregar histórico apenas uma vez na montagem
   useEffect(() => {
     loadInsightsHistory();
   }, []);
@@ -578,3 +582,20 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ dateFilter, metric
     </div>
   );
 };
+
+// Componente memoizado com comparação customizada para evitar re-renders desnecessários
+export const InsightsPanel = React.memo(InsightsPanelComponent, (prevProps, nextProps) => {
+  // Retorna true se as props são iguais (não precisa re-render)
+  const dateEqual = 
+    prevProps.dateFilter?.startDate?.getTime() === nextProps.dateFilter?.startDate?.getTime() &&
+    prevProps.dateFilter?.endDate?.getTime() === nextProps.dateFilter?.endDate?.getTime();
+  
+  const metricsEqual = 
+    prevProps.metrics?.totalConversations === nextProps.metrics?.totalConversations &&
+    prevProps.metrics?.totalMessages === nextProps.metrics?.totalMessages &&
+    prevProps.metrics?.activeConversations === nextProps.metrics?.activeConversations &&
+    prevProps.metrics?.aiRequests === nextProps.metrics?.aiRequests &&
+    prevProps.metrics?.avgAiRequestsPerConversation === nextProps.metrics?.avgAiRequestsPerConversation;
+  
+  return dateEqual && metricsEqual;
+});

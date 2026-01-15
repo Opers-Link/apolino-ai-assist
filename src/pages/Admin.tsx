@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +93,27 @@ const Admin = () => {
     endDate: Date | null;
   }>({ startDate: null, endDate: null });
   const { toast } = useToast();
+
+  // Memoizar dateFilter para evitar re-renders desnecessários do InsightsPanel
+  const memoizedDateFilter = useMemo(() => ({
+    startDate: dateFilter.startDate,
+    endDate: dateFilter.endDate
+  }), [dateFilter.startDate?.getTime(), dateFilter.endDate?.getTime()]);
+
+  // Memoizar metrics para evitar re-renders desnecessários do InsightsPanel
+  const memoizedMetrics = useMemo(() => ({
+    totalConversations: stats.totalConversations,
+    totalMessages: stats.totalMessages,
+    activeConversations: stats.activeConversations,
+    aiRequests: stats.aiRequests,
+    avgAiRequestsPerConversation: stats.avgAiRequestsPerConversation
+  }), [
+    stats.totalConversations,
+    stats.totalMessages,
+    stats.activeConversations,
+    stats.aiRequests,
+    stats.avgAiRequestsPerConversation
+  ]);
 
   useEffect(() => {
     loadCurrentUser();
@@ -648,8 +669,8 @@ const Admin = () => {
               </Card>
             </div>
 
-            {/* Seção de Insights */}
-            <InsightsPanel dateFilter={dateFilter} metrics={stats} />
+            {/* Seção de Insights - usando props memoizadas para evitar re-renders */}
+            <InsightsPanel dateFilter={memoizedDateFilter} metrics={memoizedMetrics} />
     </div>
   );
 
