@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, File, X, FileText, FileSpreadsheet } from 'lucide-react';
+import { Upload, File, X, FileText, FileSpreadsheet, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -170,6 +170,13 @@ export function FileUploadZone({
             </span>
             <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
               TXT
+            </span>
+          </div>
+
+          <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-lg p-2.5 max-w-lg mx-auto text-left">
+            <Info className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <span>
+              <strong className="text-amber-700">Limites de processamento:</strong> CSVs são limitados às primeiras 500 linhas e TXTs aos primeiros 50.000 caracteres. Para melhores resultados, envie arquivos dentro desses limites.
             </span>
           </div>
         </div>

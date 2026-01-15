@@ -26,7 +26,9 @@ import {
   Meh,
   Loader2,
   FileDown,
-  Mail
+  Mail,
+  Server,
+  CheckSquare
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -35,10 +37,37 @@ import jsPDF from 'jspdf';
 
 interface InsightsData {
   summary: string;
-  top_topics: Array<{ topic: string; count: number; percentage: number }>;
-  recurring_issues: Array<{ issue: string; frequency: number; severity: 'high' | 'medium' | 'low' }>;
-  operational_gaps: Array<{ gap: string; recommendation: string }>;
-  sentiment_analysis: { positive: number; neutral: number; negative: number };
+  systems_affected?: Array<{ 
+    system: string; 
+    ticket_count: number; 
+    main_issues: string[];
+  }>;
+  top_topics: Array<{ 
+    topic: string; 
+    count: number; 
+    percentage: number;
+    example_tickets?: string[];
+  }>;
+  recurring_issues: Array<{ 
+    issue: string; 
+    frequency: number; 
+    severity: 'high' | 'medium' | 'low';
+    probable_cause?: string;
+    affected_system?: string;
+  }>;
+  operational_gaps: Array<{ 
+    gap: string; 
+    recommendation: string;
+    priority?: 'alta' | 'média' | 'baixa';
+    estimated_effort?: 'baixo' | 'médio' | 'alto';
+  }>;
+  action_plan?: Array<{
+    action: string;
+    responsible: string;
+    priority: number;
+    expected_impact: string;
+  }>;
+  sentiment_analysis?: { positive: number; neutral: number; negative: number };
   trends: Array<{ trend: string; direction: 'up' | 'down' | 'stable'; change: string }>;
 }
 
@@ -204,6 +233,15 @@ export function ManualInsightsPanel() {
     }
   };
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'alta': return 'border-red-300 text-red-600 bg-red-50';
+      case 'média': return 'border-yellow-300 text-yellow-600 bg-yellow-50';
+      case 'baixa': return 'border-green-300 text-green-600 bg-green-50';
+      default: return 'border-gray-300 text-gray-600 bg-gray-50';
+    }
+  };
+
   const getTrendIcon = (direction: string) => {
     switch (direction) {
       case 'up': return <TrendingUp className="h-4 w-4 text-green-600" />;
@@ -227,7 +265,7 @@ export function ManualInsightsPanel() {
                 Upload de Dados
               </CardTitle>
               <CardDescription>
-                Faça upload de arquivos com feedbacks, pesquisas ou avaliações para análise
+                Faça upload de arquivos com tickets de suporte, feedbacks ou dados para análise
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -249,7 +287,7 @@ export function ManualInsightsPanel() {
                 <Label htmlFor="title">Título do Relatório *</Label>
                 <Input
                   id="title"
-                  placeholder="Ex: Análise NPS Q4 2024"
+                  placeholder="Ex: Análise de Tickets Janeiro 2025"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   disabled={generating}
@@ -260,7 +298,7 @@ export function ManualInsightsPanel() {
                 <Label htmlFor="description">Descrição / Contexto</Label>
                 <Textarea
                   id="description"
-                  placeholder="Descreva o contexto dos dados (opcional)"
+                  placeholder="Descreva o contexto dos dados. Ex: Tickets de suporte abertos para TI no mês de janeiro, incluindo todos os sistemas."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={generating}
@@ -371,6 +409,71 @@ export function ManualInsightsPanel() {
               </CardContent>
             </Card>
 
+            {/* Sistemas Afetados - Nova Seção */}
+            {insights.systems_affected && insights.systems_affected.length > 0 && (
+              <Card className="lg:col-span-2 bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-apolar-blue">
+                    <Server className="h-5 w-5" />
+                    Sistemas Afetados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {insights.systems_affected.map((sys, idx) => (
+                      <div key={idx} className="p-4 bg-white rounded-lg border border-apolar-light-gray hover:shadow-md transition-shadow">
+                        <p className="font-semibold text-apolar-blue truncate" title={sys.system}>{sys.system}</p>
+                        <p className="text-2xl font-bold text-apolar-gold-alt">{sys.ticket_count}</p>
+                        <p className="text-xs text-muted-foreground mb-2">tickets</p>
+                        <div className="space-y-1">
+                          {sys.main_issues.slice(0, 2).map((issue, i) => (
+                            <p key={i} className="text-xs text-muted-foreground truncate" title={issue}>• {issue}</p>
+                          ))}
+                          {sys.main_issues.length > 2 && (
+                            <p className="text-xs text-muted-foreground">+{sys.main_issues.length - 2} outros</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Plano de Ação - Nova Seção */}
+            {insights.action_plan && insights.action_plan.length > 0 && (
+              <Card className="lg:col-span-2 bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-apolar-blue">
+                    <CheckSquare className="h-5 w-5" />
+                    Plano de Ação Recomendado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {insights.action_plan.map((action, idx) => (
+                      <div key={idx} className="flex items-start gap-4 p-4 bg-white rounded-lg border border-apolar-light-gray hover:shadow-sm transition-shadow">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-apolar-blue flex items-center justify-center text-white font-bold text-lg">
+                          {action.priority}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-apolar-blue">{action.action}</p>
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                            <Badge variant="outline" className="bg-white">
+                              {action.responsible}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              Impacto: {action.expected_impact}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Principais Tópicos */}
             <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
               <CardHeader className="pb-3">
@@ -380,17 +483,24 @@ export function ManualInsightsPanel() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[250px]">
+                <ScrollArea className="h-[280px]">
                   <div className="space-y-3">
                     {insights.top_topics?.map((topic, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-apolar-light-gray">
-                        <div className="flex-1">
-                          <p className="font-medium text-apolar-blue">{topic.topic}</p>
-                          <p className="text-xs text-muted-foreground">{topic.count} menções</p>
+                      <div key={idx} className="p-3 bg-white rounded-lg border border-apolar-light-gray">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-apolar-blue">{topic.topic}</p>
+                            <p className="text-xs text-muted-foreground">{topic.count} menções</p>
+                          </div>
+                          <Badge className="bg-apolar-gold/20 text-apolar-gold-alt border-apolar-gold/30 flex-shrink-0">
+                            {topic.percentage}%
+                          </Badge>
                         </div>
-                        <Badge className="bg-apolar-gold/20 text-apolar-gold-alt border-apolar-gold/30">
-                          {topic.percentage}%
-                        </Badge>
+                        {topic.example_tickets && topic.example_tickets.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-2 italic truncate" title={topic.example_tickets[0]}>
+                            Ex: "{topic.example_tickets[0]}"
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -407,19 +517,27 @@ export function ManualInsightsPanel() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[250px]">
+                <ScrollArea className="h-[280px]">
                   <div className="space-y-3">
                     {insights.recurring_issues?.map((issue, idx) => (
                       <div key={idx} className="p-3 bg-white rounded-lg border border-apolar-light-gray">
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-medium text-apolar-blue flex-1">{issue.issue}</p>
-                          <Badge className={getSeverityColor(issue.severity)}>
+                          <Badge className={`flex-shrink-0 ${getSeverityColor(issue.severity)}`}>
                             {issue.severity === 'high' ? 'Alta' : issue.severity === 'medium' ? 'Média' : 'Baixa'}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Frequência: {issue.frequency}x
-                        </p>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
+                          <span>Frequência: {issue.frequency}x</span>
+                          {issue.affected_system && (
+                            <span className="bg-gray-100 px-2 py-0.5 rounded">{issue.affected_system}</span>
+                          )}
+                        </div>
+                        {issue.probable_cause && (
+                          <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1.5 mt-2">
+                            <strong>Causa provável:</strong> {issue.probable_cause}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -436,14 +554,26 @@ export function ManualInsightsPanel() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[250px]">
+                <ScrollArea className="h-[280px]">
                   <div className="space-y-3">
                     {insights.operational_gaps?.map((gap, idx) => (
                       <div key={idx} className="p-3 bg-white rounded-lg border border-apolar-light-gray">
-                        <p className="font-medium text-apolar-blue">{gap.gap}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-medium text-apolar-blue flex-1">{gap.gap}</p>
+                          {gap.priority && (
+                            <Badge variant="outline" className={`flex-shrink-0 ${getPriorityColor(gap.priority)}`}>
+                              {gap.priority}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           💡 {gap.recommendation}
                         </p>
+                        {gap.estimated_effort && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Esforço estimado: <span className="font-medium">{gap.estimated_effort}</span>
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -452,63 +582,72 @@ export function ManualInsightsPanel() {
             </Card>
 
             {/* Análise de Sentimento */}
-            <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-apolar-blue">Análise de Sentimento</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <ThumbsUp className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-700">Positivo</span>
+            {insights.sentiment_analysis && (
+              <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-apolar-blue">Análise de Sentimento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <ThumbsUp className="h-5 w-5 text-green-600" />
+                        <span className="font-medium text-green-700">Positivo</span>
+                      </div>
+                      <span className="text-2xl font-bold text-green-600">
+                        {insights.sentiment_analysis.positive || 0}%
+                      </span>
                     </div>
-                    <span className="text-2xl font-bold text-green-600">
-                      {insights.sentiment_analysis?.positive || 0}%
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Meh className="h-5 w-5 text-gray-600" />
-                      <span className="font-medium text-gray-700">Neutro</span>
+                    
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Meh className="h-5 w-5 text-gray-600" />
+                        <span className="font-medium text-gray-700">Neutro</span>
+                      </div>
+                      <span className="text-2xl font-bold text-gray-600">
+                        {insights.sentiment_analysis.neutral || 0}%
+                      </span>
                     </div>
-                    <span className="text-2xl font-bold text-gray-600">
-                      {insights.sentiment_analysis?.neutral || 0}%
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <ThumbsDown className="h-5 w-5 text-red-600" />
-                      <span className="font-medium text-red-700">Negativo</span>
+                    
+                    <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <ThumbsDown className="h-5 w-5 text-red-600" />
+                        <span className="font-medium text-red-700">Negativo</span>
+                      </div>
+                      <span className="text-2xl font-bold text-red-600">
+                        {insights.sentiment_analysis.negative || 0}%
+                      </span>
                     </div>
-                    <span className="text-2xl font-bold text-red-600">
-                      {insights.sentiment_analysis?.negative || 0}%
-                    </span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Tendências */}
             {insights.trends && insights.trends.length > 0 && (
-              <Card className="lg:col-span-2 bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+              <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-apolar-blue">📈 Tendências Identificadas</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-apolar-blue">
+                    <TrendingUp className="h-5 w-5" />
+                    Tendências Observadas
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {insights.trends.map((trend, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-apolar-light-gray">
-                        {getTrendIcon(trend.direction)}
-                        <div className="flex-1">
-                          <p className="font-medium text-apolar-blue text-sm">{trend.trend}</p>
-                          <p className="text-xs text-muted-foreground">{trend.change}</p>
+                  <ScrollArea className="h-[200px]">
+                    <div className="space-y-3">
+                      {insights.trends.map((trend, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-apolar-light-gray">
+                          <div className="mt-0.5">
+                            {getTrendIcon(trend.direction)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-apolar-blue">{trend.trend}</p>
+                            <p className="text-sm text-muted-foreground">{trend.change}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </CardContent>
               </Card>
             )}
@@ -516,28 +655,29 @@ export function ManualInsightsPanel() {
         </div>
       )}
 
-      {/* Estado vazio */}
-      {!insights && !generating && (
-        <Card className="bg-white/40 backdrop-blur-sm border-apolar-blue/10">
-          <CardContent className="py-12 text-center">
-            <div className="h-16 w-16 rounded-2xl bg-apolar-gold/10 flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="h-8 w-8 text-apolar-gold" />
+      {/* Estado vazio quando não há insight selecionado */}
+      {!insights && (
+        <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/10">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="h-16 w-16 rounded-full bg-apolar-blue/10 flex items-center justify-center mb-4">
+              <Sparkles className="h-8 w-8 text-apolar-blue" />
             </div>
-            <h3 className="text-lg font-medium text-apolar-blue mb-2">
+            <h3 className="text-lg font-semibold text-apolar-blue mb-2">
               Nenhum insight selecionado
             </h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Faça upload de arquivos e gere novos insights, ou selecione um insight do histórico para visualizar
+            <p className="text-muted-foreground text-center max-w-md">
+              Faça upload de arquivos e gere novos insights, ou selecione um relatório do histórico para visualizar os resultados.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Dialog de envio por e-mail */}
+      {/* Dialog de Email */}
       {selectedInsight && (
         <EmailInsightDialog
           open={emailDialogOpen}
           onOpenChange={setEmailDialogOpen}
+          insightType="manual"
           insightId={selectedInsight.id}
           insightTitle={selectedInsight.title}
         />
