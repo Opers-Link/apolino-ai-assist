@@ -83,11 +83,12 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
     <Sidebar className="border-r border-apolar-blue/10">
       <SidebarHeader className="p-6 border-b border-apolar-blue/10 bg-gradient-to-br from-apolar-blue to-apolar-blue-dark">
         <div className="flex items-center gap-3">
-          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light backdrop-blur-xl p-2.5 shadow-lg shadow-apolar-gold/30">
+          <div className="h-14 w-14 flex items-center justify-center">
             <img 
               src={aiaLogo} 
               alt="AIA Logo" 
-              className="h-full w-full object-contain brightness-0 opacity-80"
+              className="h-12 w-12 object-contain drop-shadow-[0_0_8px_rgba(255,204,0,0.6)]"
+              style={{ filter: 'brightness(0) saturate(100%) invert(78%) sepia(98%) saturate(1000%) hue-rotate(360deg) brightness(105%) contrast(105%)' }}
             />
           </div>
           <div className="text-white flex-1">
