@@ -9,10 +9,37 @@ const corsHeaders = {
 
 interface InsightsData {
   summary: string;
-  top_topics: Array<{ topic: string; count: number; percentage: number }>;
-  recurring_issues: Array<{ issue: string; frequency: number; severity: 'high' | 'medium' | 'low' }>;
-  operational_gaps: Array<{ gap: string; recommendation: string }>;
-  sentiment_analysis: { positive: number; neutral: number; negative: number };
+  systems_affected?: Array<{ 
+    system: string; 
+    ticket_count: number; 
+    main_issues: string[];
+  }>;
+  top_topics: Array<{ 
+    topic: string; 
+    count: number; 
+    percentage: number;
+    example_tickets?: string[];
+  }>;
+  recurring_issues: Array<{ 
+    issue: string; 
+    frequency: number; 
+    severity: 'high' | 'medium' | 'low';
+    probable_cause?: string;
+    affected_system?: string;
+  }>;
+  operational_gaps: Array<{ 
+    gap: string; 
+    recommendation: string;
+    priority?: 'alta' | 'média' | 'baixa';
+    estimated_effort?: 'baixo' | 'médio' | 'alto';
+  }>;
+  action_plan?: Array<{
+    action: string;
+    responsible: string;
+    priority: number;
+    expected_impact: string;
+  }>;
+  sentiment_analysis?: { positive: number; neutral: number; negative: number };
   trends: Array<{ trend: string; direction: 'up' | 'down' | 'stable'; change: string }>;
 }
 
@@ -112,24 +139,59 @@ serve(async (req) => {
           const lines = text.split('\n').filter(l => l.trim());
           totalRecords += Math.max(0, lines.length - 1); // Excluir header
           combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (CSV - ${lines.length - 1} registros) ===\n`;
-          // Limitar para evitar tokens excessivos
-          combinedContent += lines.slice(0, 100).join('\n');
-          if (lines.length > 100) {
-            combinedContent += `\n... (e mais ${lines.length - 100} registros)`;
+          // Aumentado de 100 para 500 linhas
+          combinedContent += lines.slice(0, 500).join('\n');
+          if (lines.length > 500) {
+            combinedContent += `\n... (e mais ${lines.length - 500} registros)`;
           }
         } else if (file.file_type === 'txt') {
           const lines = text.split('\n').filter(l => l.trim());
           totalRecords += lines.length;
           combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (TXT - ${lines.length} linhas) ===\n`;
-          combinedContent += text.slice(0, 10000);
-          if (text.length > 10000) {
+          // Aumentado de 10.000 para 50.000 caracteres
+          combinedContent += text.slice(0, 50000);
+          if (text.length > 50000) {
             combinedContent += `\n... (texto truncado)`;
           }
         } else if (file.file_type === 'pdf') {
-          // Para PDF, precisamos usar a função de extração existente ou processar de outra forma
-          combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (PDF) ===\n`;
-          combinedContent += '[Conteúdo PDF - extração via texto não disponível diretamente]';
-          totalRecords += 1;
+          // Extrair texto do PDF usando a função existente
+          try {
+            console.log(`Extraindo texto do PDF: ${file.file_name}`);
+            const extractResponse = await fetch(
+              `${supabaseUrl}/functions/v1/extract-pdf-text`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': authHeader,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                  filePath: file.file_path, 
+                  bucket: 'manual-insights-files' 
+                }),
+              }
+            );
+            
+            if (extractResponse.ok) {
+              const pdfData = await extractResponse.json();
+              if (pdfData?.extractedText) {
+                const pdfText = pdfData.extractedText.slice(0, 30000);
+                combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (PDF) ===\n${pdfText}`;
+                totalRecords += 1;
+                console.log(`PDF extraído com sucesso: ${pdfText.length} caracteres`);
+              } else {
+                console.log('Resposta do PDF sem texto extraído:', pdfData);
+                combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (PDF - não foi possível extrair texto) ===\n`;
+              }
+            } else {
+              const errorText = await extractResponse.text();
+              console.error(`Erro ao extrair PDF ${file.file_name}:`, extractResponse.status, errorText);
+              combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (PDF - erro na extração) ===\n`;
+            }
+          } catch (pdfError) {
+            console.error(`Erro ao processar PDF ${file.file_name}:`, pdfError);
+            combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (PDF - não processado) ===\n`;
+          }
         }
       } catch (err) {
         console.error(`Erro ao processar ${file.file_name}:`, err);
@@ -143,30 +205,54 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Você é um analista de dados especializado em feedback de clientes e análise de pesquisas.
-Sua tarefa é analisar dados fornecidos pelo usuário (feedbacks, pesquisas, avaliações, comentários, etc.) e identificar padrões, problemas recorrentes e oportunidades de melhoria.
+    // Prompt especializado para análise de tickets de suporte/TI
+    const systemPrompt = `Você é um analista sênior de operações de TI especializado em suporte técnico para o setor imobiliário.
+Sua tarefa é analisar dados de tickets de suporte e identificar padrões críticos, falhas recorrentes e oportunidades de melhoria.
 
-Analise os dados fornecidos e retorne um JSON estruturado com:
-1. summary: Resumo executivo em 2-3 frases sobre os principais achados
-2. top_topics: Array com os 5-10 assuntos mais mencionados (topic, count estimado, percentage)
-3. recurring_issues: Array com problemas recorrentes identificados (issue, frequency, severity: high/medium/low)
-4. operational_gaps: Array com lacunas operacionais/oportunidades de melhoria (gap, recommendation)
-5. sentiment_analysis: Objeto com distribuição de sentimento (positive, neutral, negative - em percentual)
-6. trends: Array com tendências observadas (trend, direction: up/down/stable, change)
+CONTEXTO DO NEGÓCIO:
+- Apolar Imóveis é uma das maiores redes de franquias imobiliárias do Brasil
+- Sistemas principais: CRM Apolar Sales, NET Locação (gestão de aluguéis), NET Vendas, Área do Cliente
+- Usuários: corretores, gerentes de loja, equipe administrativa, franqueados
+
+INSTRUÇÕES DE ANÁLISE:
+1. Identifique os PROBLEMAS REAIS, não apenas palavras-chave. Agrupe tickets que descrevem o mesmo problema de formas diferentes.
+2. Analise o IMPACTO OPERACIONAL de cada problema (quantos usuários afetados, qual sistema, urgência).
+3. Identifique PADRÕES TEMPORAIS se houver datas/horários nos dados.
+4. Proponha CAUSAS RAIZ prováveis para problemas recorrentes.
+5. Sugira AÇÕES CONCRETAS e priorizadas para a equipe de TI.
+
+CRITÉRIOS DE SEVERIDADE:
+- ALTA (high): Sistema indisponível, bloqueio de operação, perda de dados, afeta múltiplos usuários
+- MÉDIA (medium): Funcionalidade degradada, workaround disponível, afeta usuários específicos  
+- BAIXA (low): Inconveniência, melhoria desejada, documentação/treinamento
+
+ESTRUTURA DA RESPOSTA (JSON válido):
+{
+  "summary": "Resumo executivo de 3-5 frases com os achados MAIS CRÍTICOS e impacto quantificado",
+  "systems_affected": [{"system": "nome do sistema", "ticket_count": número, "main_issues": ["problema1", "problema2"]}],
+  "top_topics": [{"topic": "descrição clara do tópico", "count": número, "percentage": percentual, "example_tickets": ["exemplo de ticket"]}],
+  "recurring_issues": [{"issue": "descrição detalhada do problema", "frequency": número de ocorrências, "severity": "high/medium/low", "probable_cause": "causa raiz provável", "affected_system": "sistema afetado"}],
+  "operational_gaps": [{"gap": "lacuna identificada", "recommendation": "ação específica e concreta", "priority": "alta/média/baixa", "estimated_effort": "baixo/médio/alto"}],
+  "action_plan": [{"action": "ação concreta e específica", "responsible": "TI/Treinamento/Fornecedor/Processo", "priority": 1 a 5, "expected_impact": "descrição do impacto esperado"}],
+  "sentiment_analysis": {"positive": percentual, "neutral": percentual, "negative": percentual},
+  "trends": [{"trend": "tendência observada", "direction": "up/down/stable", "change": "descrição da mudança"}]
+}
 
 IMPORTANTE: 
-- Responda APENAS com o JSON, sem texto adicional
-- O JSON deve ser válido
-- Adapte a análise ao tipo de dados fornecidos (pesquisas, feedbacks, avaliações, etc.)`;
+- Responda APENAS com JSON válido, sem texto adicional antes ou depois
+- Seja ESPECÍFICO - cite exemplos reais dos dados, evite termos vagos como "problemas de sistema"
+- Quantifique sempre que possível (quantidade de tickets, percentuais, frequência)
+- O action_plan deve ter no máximo 5 ações, ordenadas por prioridade (1 = mais urgente)
+- Se os dados não forem tickets de TI, adapte a análise mantendo a mesma estrutura`;
 
     const userPrompt = `Analise os seguintes dados (${totalRecords} registros de ${files.length} arquivo(s)):
 
 ${combinedContent}
 
-${description ? `\nContexto adicional: ${description}` : ''}
+${description ? `\nContexto adicional fornecido pelo usuário: ${description}` : ''}
 ${period_start && period_end ? `\nPeríodo de referência: ${period_start} a ${period_end}` : ''}
 
-Retorne a análise em formato JSON conforme especificado.`;
+Retorne a análise completa em formato JSON conforme a estrutura especificada.`;
 
     console.log('Chamando Lovable AI para análise...');
 
