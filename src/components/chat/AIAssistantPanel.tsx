@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -727,8 +727,21 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
             </Button>
           </div>
           
+          {/* Link para FAQ */}
+          <div className="mt-3">
+            <Button
+              onClick={() => window.open('/faq', '_blank')}
+              variant="ghost"
+              size="sm"
+              className="w-full gap-2 text-apolar-blue hover:bg-apolar-blue/5 border border-dashed border-apolar-blue/30"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Ver Dúvidas Frequentes (FAQ)
+            </Button>
+          </div>
+          
           {/* CTAs destacados */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-3">
             <Button
               onClick={handleOpenTicket}
               variant="outline"
