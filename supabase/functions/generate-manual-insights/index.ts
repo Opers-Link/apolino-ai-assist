@@ -52,6 +52,7 @@ interface FileInfo {
 interface RequestPayload {
   title: string;
   description?: string;
+  custom_prompt?: string;
   period_start?: string;
   period_end?: string;
   files: FileInfo[];
@@ -107,7 +108,7 @@ serve(async (req) => {
     }
 
     const payload: RequestPayload = await req.json();
-    const { title, description, period_start, period_end, files } = payload;
+    const { title, description, custom_prompt, period_start, period_end, files } = payload;
 
     if (!title || !files || files.length === 0) {
       return new Response(
@@ -249,6 +250,7 @@ IMPORTANTE:
 
 ${combinedContent}
 
+${custom_prompt ? `\n### INSTRUÇÕES ESPECÍFICAS DO USUÁRIO (PRIORIZE ESTAS INSTRUÇÕES) ###\n${custom_prompt}\n` : ''}
 ${description ? `\nContexto adicional fornecido pelo usuário: ${description}` : ''}
 ${period_start && period_end ? `\nPeríodo de referência: ${period_start} a ${period_end}` : ''}
 
