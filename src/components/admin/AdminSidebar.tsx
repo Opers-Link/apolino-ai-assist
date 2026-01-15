@@ -83,20 +83,19 @@ export function AdminSidebar({ activeTab, onTabChange }: AdminSidebarProps) {
     <Sidebar className="border-r border-apolar-blue/10">
       <SidebarHeader className="p-6 border-b border-apolar-blue/10 bg-gradient-to-br from-apolar-blue to-apolar-blue-dark">
         <div className="flex items-center gap-3">
-          <div className="h-14 w-14 flex items-center justify-center">
+          <div className="h-14 w-14 flex items-center justify-center relative">
             <img 
               src={aiaLogo} 
               alt="AIA Logo" 
-              className="h-12 w-12 object-contain drop-shadow-[0_0_10px_rgba(255,204,0,0.5)]"
-              style={{ filter: 'brightness(0) saturate(100%) invert(75%) sepia(60%) saturate(600%) hue-rotate(5deg) brightness(95%) contrast(95%)' }}
+              className="h-12 w-12 object-contain drop-shadow-[0_0_10px_rgba(255,204,0,0.4)]"
+              style={{ filter: 'brightness(0) saturate(100%) invert(81%) sepia(44%) saturate(1000%) hue-rotate(358deg) brightness(100%) contrast(101%)' }}
             />
           </div>
           <div className="text-white flex-1">
             <h2 className="font-bold text-base leading-tight bg-gradient-to-r from-apolar-gold via-apolar-gold-alt to-apolar-gold-light bg-clip-text text-transparent">
               AIA
             </h2>
-            <p className="text-xs text-white/90 font-medium mt-0.5">Inteligência Artificial</p>
-            <p className="text-[10px] text-white/60">Apolar Imóveis</p>
+            <p className="text-xs text-white/90 font-medium mt-0.5">Inteligência Artificial Apolar</p>
           </div>
         </div>
       </SidebarHeader>
