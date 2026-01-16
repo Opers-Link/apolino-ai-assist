@@ -140,10 +140,10 @@ serve(async (req) => {
           const lines = text.split('\n').filter(l => l.trim());
           totalRecords += Math.max(0, lines.length - 1); // Excluir header
           combinedContent += `\n\n=== ARQUIVO: ${file.file_name} (CSV - ${lines.length - 1} registros) ===\n`;
-          // Aumentado de 100 para 500 linhas
-          combinedContent += lines.slice(0, 500).join('\n');
-          if (lines.length > 500) {
-            combinedContent += `\n... (e mais ${lines.length - 500} registros)`;
+          // Limite provisório aumentado para 6000 linhas
+          combinedContent += lines.slice(0, 6000).join('\n');
+          if (lines.length > 6000) {
+            combinedContent += `\n... (e mais ${lines.length - 6000} registros)`;
           }
         } else if (file.file_type === 'txt') {
           const lines = text.split('\n').filter(l => l.trim());
