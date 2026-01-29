@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, HelpCircle, ArrowLeft, MessageCircle, Loader2, Rocket } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect } from 'react';
+import { HelpCircle, ArrowLeft, MessageCircle, Loader2, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import aiaLogo from '@/assets/aia-logo.png';
@@ -27,7 +26,7 @@ interface UpcomingUpdate {
 }
 
 const FAQ = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<FAQCategory[]>([]);
   const [updates, setUpdates] = useState<UpcomingUpdate[]>([]);
@@ -97,22 +96,6 @@ const FAQ = () => {
     }
   };
 
-  const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) return categories;
-
-    const term = searchTerm.toLowerCase();
-    
-    return categories
-      .map(category => ({
-        ...category,
-        questions: category.questions.filter(
-          item =>
-            item.question.toLowerCase().includes(term) ||
-            item.answer.toLowerCase().includes(term)
-        )
-      }))
-      .filter(category => category.questions.length > 0);
-  }, [searchTerm, categories]);
 
   const totalQuestions = categories.reduce((acc, cat) => acc + cat.questions.length, 0);
 
@@ -157,24 +140,12 @@ const FAQ = () => {
               <HelpCircle className="h-full w-full text-apolar-gold" />
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">
+          <h1 className="text-3xl md:text-4xl font-bold mb-3 text-white">
             Dúvidas Frequentes
           </h1>
           <p className="text-white/80 text-lg mb-8">
             Encontre respostas rápidas para as principais questões sobre os sistemas Apolar
           </p>
-          
-          {/* Search */}
-          <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Buscar por palavra-chave..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 rounded-xl bg-white text-gray-800 border-0 shadow-lg focus-visible:ring-2 focus-visible:ring-apolar-gold"
-            />
-          </div>
           
           <p className="text-sm text-white/60 mt-4">
             {totalQuestions} perguntas em {categories.length} categorias
@@ -204,30 +175,11 @@ const FAQ = () => {
               Voltar
             </Button>
           </div>
-        ) : searchTerm && filteredCategories.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-              <Search className="h-8 w-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-800 mb-2">
-              Nenhum resultado encontrado
-            </h3>
-            <p className="text-gray-500 mb-4">
-              Não encontramos perguntas para "{searchTerm}"
-            </p>
-            <Button 
-              variant="outline" 
-              onClick={() => setSearchTerm('')}
-              className="gap-2"
-            >
-              Limpar busca
-            </Button>
-          </div>
         ) : (
           <>
             {/* Category Grid */}
-            {!searchTerm && !selectedCategory && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {!selectedCategory && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 {categories.map((category) => (
                   <button
                     key={category.id}
@@ -246,23 +198,21 @@ const FAQ = () => {
               </div>
             )}
 
-            {/* Selected Category or Search Results */}
-            {(selectedCategory || searchTerm) && (
+            {/* Selected Category */}
+            {selectedCategory && (
               <div>
-                {selectedCategory && !searchTerm && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedCategory(null)}
-                    className="gap-2 text-gray-600 hover:text-apolar-blue mb-6"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Voltar às categorias
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedCategory(null)}
+                  className="gap-2 text-gray-600 hover:text-apolar-blue mb-6"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar às categorias
+                </Button>
 
                 <div className="space-y-6">
-                  {(searchTerm ? filteredCategories : categories.filter(c => c.id === selectedCategory)).map((category) => (
+                  {categories.filter(c => c.id === selectedCategory).map((category) => (
                     <div key={category.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                       <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                         <div className="flex items-center gap-3">
