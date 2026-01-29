@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, HelpCircle, ArrowLeft, MessageCircle, Loader2 } from 'lucide-react';
+import { Search, HelpCircle, ArrowLeft, MessageCircle, Loader2, Rocket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -278,8 +278,55 @@ const FAQ = () => {
           </>
         )}
 
+        {/* Próximas Atualizações */}
+        <div className="mt-12 bg-gradient-to-br from-apolar-gold/10 via-amber-50 to-orange-50 rounded-2xl p-8 border border-apolar-gold/20">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-apolar-gold to-apolar-gold-alt flex items-center justify-center">
+              <Rocket className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Próximas Atualizações</h3>
+              <p className="text-sm text-gray-500">Em desenvolvimento</p>
+            </div>
+          </div>
+          
+          <div className="grid gap-3">
+            {[
+              { title: "Integração com WhatsApp", description: "Atendimento direto pelo WhatsApp com a AIA", status: "Em breve" },
+              { title: "Relatórios Avançados", description: "Dashboards personalizados com métricas detalhadas", status: "Em desenvolvimento" },
+              { title: "Notificações Push", description: "Alertas em tempo real sobre atualizações importantes", status: "Planejado" },
+              { title: "Modo Offline", description: "Acesso a documentos e FAQs mesmo sem internet", status: "Planejado" },
+              { title: "Assistente de Voz", description: "Interação por comandos de voz com a AIA", status: "Em análise" },
+            ].map((item, index) => (
+              <div 
+                key={index}
+                className="flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-apolar-gold/10 hover:border-apolar-gold/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-apolar-gold animate-pulse" />
+                  <div>
+                    <p className="font-medium text-gray-800">{item.title}</p>
+                    <p className="text-sm text-gray-500">{item.description}</p>
+                  </div>
+                </div>
+                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                  item.status === "Em breve" 
+                    ? "bg-green-100 text-green-700" 
+                    : item.status === "Em desenvolvimento"
+                    ? "bg-blue-100 text-blue-700"
+                    : item.status === "Em análise"
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}>
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* CTA */}
-        <div className="mt-12 bg-gradient-to-r from-apolar-blue/5 to-apolar-gold/5 rounded-2xl p-8 text-center border border-apolar-blue/10">
+        <div className="mt-8 bg-gradient-to-r from-apolar-blue/5 to-apolar-gold/5 rounded-2xl p-8 text-center border border-apolar-blue/10">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">
             Não encontrou o que procurava?
           </h3>
