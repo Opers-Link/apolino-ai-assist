@@ -232,6 +232,7 @@ export type Database = {
       faq_questions: {
         Row: {
           answer: string
+          auto_generated: boolean | null
           category_id: string
           created_at: string
           created_by: string | null
@@ -239,10 +240,12 @@ export type Database = {
           id: string
           is_active: boolean
           question: string
+          source_module_id: string | null
           updated_at: string
         }
         Insert: {
           answer: string
+          auto_generated?: boolean | null
           category_id: string
           created_at?: string
           created_by?: string | null
@@ -250,10 +253,12 @@ export type Database = {
           id?: string
           is_active?: boolean
           question: string
+          source_module_id?: string | null
           updated_at?: string
         }
         Update: {
           answer?: string
+          auto_generated?: boolean | null
           category_id?: string
           created_at?: string
           created_by?: string | null
@@ -261,6 +266,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           question?: string
+          source_module_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -269,6 +275,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "faq_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faq_questions_source_module_id_fkey"
+            columns: ["source_module_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_modules"
             referencedColumns: ["id"]
           },
         ]

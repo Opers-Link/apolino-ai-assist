@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, GripVertical, ChevronDown, ChevronRight, Save, X, HelpCircle, Loader2, Eye, EyeOff, Rocket } from 'lucide-react';
+import { Plus, Edit2, Trash2, GripVertical, ChevronDown, ChevronRight, Save, X, HelpCircle, Loader2, Eye, EyeOff, Rocket, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { UpdatesManager } from './UpdatesManager';
+import { GenerateFAQDialog } from './GenerateFAQDialog';
 
 interface FAQQuestion {
   id: string;
@@ -53,6 +54,9 @@ export function FAQManager() {
   
   // Delete confirmation
   const [deleteDialog, setDeleteDialog] = useState<{ type: 'category' | 'question'; id: string; name: string } | null>(null);
+  
+  // Generate FAQ dialog
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   useEffect(() => {
     loadFAQData();
@@ -321,10 +325,20 @@ export function FAQManager() {
                   {activeCategories} categorias ativas • {totalQuestions} perguntas cadastradas
                 </p>
               </div>
-              <Button onClick={() => openCategoryDialog()} className="gap-2 bg-apolar-blue hover:bg-apolar-blue/90">
-                <Plus className="h-4 w-4" />
-                Nova Categoria
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => setGenerateDialogOpen(true)} 
+                  variant="outline"
+                  className="gap-2 border-apolar-gold text-apolar-gold-alt hover:bg-apolar-gold/10"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Gerar com IA
+                </Button>
+                <Button onClick={() => openCategoryDialog()} className="gap-2 bg-apolar-blue hover:bg-apolar-blue/90">
+                  <Plus className="h-4 w-4" />
+                  Nova Categoria
+                </Button>
+              </div>
             </div>
 
       {/* Stats Cards */}
@@ -705,6 +719,14 @@ export function FAQManager() {
           <UpdatesManager />
         </TabsContent>
       </Tabs>
+
+      {/* Generate FAQ Dialog */}
+      <GenerateFAQDialog
+        open={generateDialogOpen}
+        onOpenChange={setGenerateDialogOpen}
+        categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon }))}
+        onSuccess={loadFAQData}
+      />
     </div>
   );
 }
