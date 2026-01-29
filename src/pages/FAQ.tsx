@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { HelpCircle, ArrowLeft, MessageCircle, Loader2, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import aiaLogo from '@/assets/aia-logo.png';
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface FAQQuestion {
@@ -109,28 +109,6 @@ const FAQ = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-apolar-blue/5">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.history.back()}
-              className="gap-2 text-gray-600 hover:text-apolar-blue"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1.5 shadow-md">
-              <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
-            </div>
-            <span className="font-semibold text-gray-800">Central de Ajuda</span>
-          </div>
-        </div>
-      </header>
 
       {/* Hero */}
       <section className="bg-gradient-to-r from-apolar-blue to-apolar-blue/90 text-white py-12 md:py-16">
@@ -187,7 +165,7 @@ const FAQ = () => {
                     className="p-6 bg-white rounded-xl border border-gray-200 hover:border-apolar-blue/30 hover:shadow-lg transition-all text-left group"
                   >
                     <span className="text-3xl mb-3 block">{category.icon}</span>
-                    <h3 className="font-semibold text-gray-800 mb-1 group-hover:text-apolar-blue transition-colors">
+                    <h3 className="text-sm font-semibold text-gray-800 mb-1 group-hover:text-apolar-blue transition-colors line-clamp-2">
                       {category.name}
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-apolar-blue font-medium mt-2">
