@@ -165,7 +165,7 @@ const FAQ = () => {
                     className="p-6 bg-white rounded-xl border border-gray-200 hover:border-apolar-blue/30 hover:shadow-lg transition-all text-left group"
                   >
                     <span className="text-3xl mb-3 block">{category.icon}</span>
-                    <h3 className="font-semibold text-gray-800 mb-1 group-hover:text-apolar-blue transition-colors line-clamp-2">
+                    <h3 className="text-[30px] font-semibold text-gray-800 mb-1 group-hover:text-apolar-blue transition-colors line-clamp-2">
                       {category.name}
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-apolar-blue font-medium mt-2">
