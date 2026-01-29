@@ -526,6 +526,42 @@ export type Database = {
           },
         ]
       }
+      upcoming_updates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          display_order: number
+          id: string
+          is_active: boolean
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_assignments: {
         Row: {
           assigned_at: string | null

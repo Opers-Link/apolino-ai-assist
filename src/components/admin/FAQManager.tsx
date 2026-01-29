@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, GripVertical, ChevronDown, ChevronRight, Save, X, HelpCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, GripVertical, ChevronDown, ChevronRight, Save, X, HelpCircle, Loader2, Eye, EyeOff, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { UpdatesManager } from './UpdatesManager';
 
 interface FAQQuestion {
   id: string;
@@ -292,22 +294,38 @@ export function FAQManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-apolar-blue flex items-center gap-2">
-            <HelpCircle className="h-6 w-6" />
-            Gerenciar FAQ
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            {activeCategories} categorias ativas • {totalQuestions} perguntas cadastradas
-          </p>
-        </div>
-        <Button onClick={() => openCategoryDialog()} className="gap-2 bg-apolar-blue hover:bg-apolar-blue/90">
-          <Plus className="h-4 w-4" />
-          Nova Categoria
-        </Button>
-      </div>
+      {/* Tabs para alternar entre FAQ e Atualizações */}
+      <Tabs defaultValue="faq" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="faq" className="gap-2">
+            <HelpCircle className="h-4 w-4" />
+            Perguntas FAQ
+          </TabsTrigger>
+          <TabsTrigger value="updates" className="gap-2">
+            <Rocket className="h-4 w-4" />
+            Atualizações
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="faq" className="mt-6">
+          {/* FAQ Content */}
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-apolar-blue flex items-center gap-2">
+                  <HelpCircle className="h-6 w-6" />
+                  Gerenciar FAQ
+                </h2>
+                <p className="text-muted-foreground mt-1">
+                  {activeCategories} categorias ativas • {totalQuestions} perguntas cadastradas
+                </p>
+              </div>
+              <Button onClick={() => openCategoryDialog()} className="gap-2 bg-apolar-blue hover:bg-apolar-blue/90">
+                <Plus className="h-4 w-4" />
+                Nova Categoria
+              </Button>
+            </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -680,6 +698,13 @@ export function FAQManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="updates" className="mt-6">
+          <UpdatesManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

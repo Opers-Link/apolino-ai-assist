@@ -19,15 +19,39 @@ interface FAQCategory {
   questions: FAQQuestion[];
 }
 
+interface UpcomingUpdate {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+}
+
 const FAQ = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<FAQCategory[]>([]);
+  const [updates, setUpdates] = useState<UpcomingUpdate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadFAQData();
+    loadUpdates();
   }, []);
+
+  const loadUpdates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('upcoming_updates')
+        .select('id, title, description, status')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      
+      if (error) throw error;
+      setUpdates(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar atualizações:', error);
+    }
+  };
 
   const loadFAQData = async () => {
     try {
@@ -291,37 +315,37 @@ const FAQ = () => {
           </div>
           
           <div className="grid gap-3">
-            {[
-              { title: "Integração com WhatsApp", description: "Atendimento direto pelo WhatsApp com a AIA", status: "Em breve" },
-              { title: "Relatórios Avançados", description: "Dashboards personalizados com métricas detalhadas", status: "Em desenvolvimento" },
-              { title: "Notificações Push", description: "Alertas em tempo real sobre atualizações importantes", status: "Planejado" },
-              { title: "Modo Offline", description: "Acesso a documentos e FAQs mesmo sem internet", status: "Planejado" },
-              { title: "Assistente de Voz", description: "Interação por comandos de voz com a AIA", status: "Em análise" },
-            ].map((item, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-apolar-gold/10 hover:border-apolar-gold/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-apolar-gold animate-pulse" />
-                  <div>
-                    <p className="font-medium text-gray-800">{item.title}</p>
-                    <p className="text-sm text-gray-500">{item.description}</p>
+            {updates.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                Nenhuma atualização disponível no momento.
+              </p>
+            ) : (
+              updates.map((item) => (
+                <div 
+                  key={item.id}
+                  className="flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-apolar-gold/10 hover:border-apolar-gold/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-apolar-gold animate-pulse" />
+                    <div>
+                      <p className="font-medium text-gray-800">{item.title}</p>
+                      <p className="text-sm text-gray-500">{item.description}</p>
+                    </div>
                   </div>
+                  <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                    item.status === "Em breve" 
+                      ? "bg-green-100 text-green-700" 
+                      : item.status === "Em desenvolvimento"
+                      ? "bg-blue-100 text-blue-700"
+                      : item.status === "Em análise"
+                      ? "bg-purple-100 text-purple-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {item.status}
+                  </span>
                 </div>
-                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                  item.status === "Em breve" 
-                    ? "bg-green-100 text-green-700" 
-                    : item.status === "Em desenvolvimento"
-                    ? "bg-blue-100 text-blue-700"
-                    : item.status === "Em análise"
-                    ? "bg-purple-100 text-purple-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}>
-                  {item.status}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
