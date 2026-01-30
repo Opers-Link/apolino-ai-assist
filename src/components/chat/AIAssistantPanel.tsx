@@ -298,7 +298,11 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
             };
             
             setMessages(prev => {
-              const exists = prev.some(m => m.id === message.id);
+              // Verificar por ID E por conteúdo similar (evita duplicatas de race condition)
+              const exists = prev.some(m => 
+                m.id === message.id || 
+                (m.content === message.content && !m.isUser && Math.abs(m.timestamp.getTime() - message.timestamp.getTime()) < 5000)
+              );
               if (exists) return prev;
               return [...prev, message];
             });
