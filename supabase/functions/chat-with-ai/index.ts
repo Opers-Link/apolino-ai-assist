@@ -44,7 +44,7 @@ interface UserContext {
 }
 
 // Rate limiting configuration
-const RATE_LIMIT_REQUESTS = 20; // Max requests per window
+const RATE_LIMIT_REQUESTS = 200; // Max requests per window
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour window
 
 async function checkRateLimit(supabase: any, sessionId: string): Promise<{ allowed: boolean; remaining: number }> {
