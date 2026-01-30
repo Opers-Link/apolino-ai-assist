@@ -1,73 +1,113 @@
 
-# Plano: Permitir Respostas de Conhecimento Geral
+# Plano: Corrigir Mensagens Triplicadas no Chat
 
-## Problema Identificado
-O prompt mestre atual instrui a AIA a responder **exclusivamente** com base nos PDFs dos módulos de conhecimento. Quando um usuário faz uma pergunta genérica sobre o mercado imobiliário (ex: "O que significa negociação de imóvel?"), a IA não responde adequadamente porque:
+## Diagnóstico
 
-1. A instrução diz: "baseadas exclusivamente nos PDF anexados"
-2. Se não achar nos PDFs: "Não tenho acesso a essa informação no momento"
-3. A IA não usa seu conhecimento geral sobre imóveis
+A análise do banco de dados confirmou que cada mensagem está sendo salva **duas vezes** e depois exibida **três vezes** no frontend:
+
+### Evidência do Banco de Dados
+```
+message_order 1: "Ola, como eu consigo sair do imóvel?" (19:26:51)
+message_order 2: "Ola, como eu consigo sair do imóvel?" (19:26:58) ← DUPLICADO
+message_order 2: Resposta da IA (19:26:58.183)  
+message_order 3: Resposta da IA (19:26:58.330) ← DUPLICADO
+```
+
+### Causa Raiz
+A mensagem está sendo salva em **dois lugares diferentes**:
+
+| Local | Arquivo | Linha | O que faz |
+|-------|---------|-------|-----------|
+| Frontend | `AIAssistantPanel.tsx` | 490 | `saveMessage(userMessage.content, true, ...)` |
+| Frontend | `AIAssistantPanel.tsx` | 529 | `saveMessage(botMessage.content, false, ...)` |
+| Edge Function | `chat-with-ai/index.ts` | 256 | `saveMessages(supabase, conversationId, userMessage, aiResponse)` |
+
+Além disso, o **Real-time Subscription** (linhas 279-310) detecta os INSERTs no banco e adiciona as mensagens ao estado, causando a terceira exibição.
+
+### Fluxo Atual (Problemático)
+```
+1. Usuário envia mensagem
+2. Frontend adiciona ao estado local ✓
+3. Frontend salva no banco (saveMessage) → INSERT #1
+4. Edge function salva no banco (saveMessages) → INSERT #2
+5. Real-time detecta INSERT e adiciona ao estado → 3ª exibição
+```
 
 ## Solução Proposta
-Ajustar o prompt mestre para criar uma **hierarquia de fontes de conhecimento**:
 
-1. **Prioridade 1**: Documentação oficial (PDFs dos módulos) - para processos, sistemas, procedimentos internos
-2. **Prioridade 2**: Conhecimento geral sobre mercado imobiliário - para conceitos, terminologia, práticas do setor
-3. **Prioridade 3**: Orientação para abrir ticket - quando for algo específico da Apolar não documentado
+Remover a duplicação centralizando o salvamento apenas no **frontend** e melhorando a verificação de duplicatas no real-time:
 
-## Alterações Necessárias
+### Alteração 1: Remover `saveMessages()` da Edge Function
 
-### Editar o Prompt Mestre (via Painel Admin > Configurações > Prompt da AIA)
+**Arquivo:** `supabase/functions/chat-with-ai/index.ts`
 
-Adicionar uma nova seção após "COMO RESPONDER" que diz:
+Comentar ou remover a chamada na linha 256:
+```typescript
+// ANTES:
+if (conversationId) {
+  await saveMessages(supabase, conversationId, messages[messages.length - 1].content, aiResponse);
+}
 
-```
-# HIERARQUIA DE FONTES DE CONHECIMENTO
-
-1. **Perguntas sobre sistemas e processos internos da Apolar** 
-   → Consultar APENAS os módulos de conhecimento (PDFs)
-   → Seguir as regras de módulo correto
-
-2. **Perguntas sobre conceitos gerais do mercado imobiliário**
-   → Você PODE usar seu conhecimento geral para explicar:
-     - Terminologia imobiliária (ex: "o que é ITBI", "o que significa escritura")
-     - Conceitos básicos de negociação, compra, venda, locação
-     - Legislação geral (Lei do Inquilinato, etc.)
-     - Práticas comuns do mercado
-   → Nesses casos, após responder, pergunte se o usuário quer saber como isso funciona especificamente na Apolar
-
-3. **Perguntas não relacionadas a imóveis ou sistemas**
-   → Orientar gentilmente que você é especializada em assuntos imobiliários e sistemas da Apolar
+// DEPOIS:
+// Mensagens são salvas pelo frontend - não duplicar aqui
+// if (conversationId) {
+//   await saveMessages(supabase, conversationId, messages[messages.length - 1].content, aiResponse);
+// }
 ```
 
-Também ajustar a seção de LIMITAÇÕES:
+### Alteração 2: Melhorar verificação de duplicatas no Real-time
 
-**De:**
-> "Você deve fornecer respostas claras, confiáveis, baseadas exclusivamente nos PDF anexados aos módulos de conhecimento."
+**Arquivo:** `src/components/chat/AIAssistantPanel.tsx`
 
-**Para:**
-> "Para dúvidas sobre processos internos e sistemas da Apolar, baseie-se exclusivamente nos PDFs anexados. Para conceitos gerais do mercado imobiliário, você pode usar seu conhecimento para contextualizar, sempre oferecendo detalhes específicos da Apolar quando relevante."
+Atualizar o listener de real-time (linhas 300-304) para verificar também pelo conteúdo:
+```typescript
+// ANTES:
+setMessages(prev => {
+  const exists = prev.some(m => m.id === message.id);
+  if (exists) return prev;
+  return [...prev, message];
+});
 
-## Impacto Esperado
+// DEPOIS:
+setMessages(prev => {
+  // Verificar por ID E por conteúdo similar (evita duplicatas de race condition)
+  const exists = prev.some(m => 
+    m.id === message.id || 
+    (m.content === message.content && !m.isUser && Math.abs(m.timestamp.getTime() - message.timestamp.getTime()) < 5000)
+  );
+  if (exists) return prev;
+  return [...prev, message];
+});
+```
 
-| Tipo de Pergunta | Antes | Depois |
-|-----------------|-------|--------|
-| "O que é negociação de imóvel?" | "Não tenho acesso..." | Explica o conceito geral + pergunta se quer saber como funciona na Apolar |
-| "Como faço uma reserva no NET?" | Consulta o módulo NET | (Sem mudança) - Consulta o módulo NET |
-| "O que é ITBI?" | "Não tenho acesso..." | Explica o imposto e sua função |
-| "Qual o fluxo de locação na Apolar?" | Consulta módulo Locação | (Sem mudança) - Consulta módulo Locação |
+## Resultado Esperado
 
----
+| Antes | Depois |
+|-------|--------|
+| 3 exibições da mesma resposta | 1 exibição única |
+| 2 registros no banco por mensagem | 1 registro por mensagem |
+| IDs de mensagem conflitantes | IDs únicos e ordenados |
 
 ## Seção Técnica
 
-### Onde fazer a alteração
-A alteração deve ser feita no **conteúdo do prompt mestre** que está armazenado na tabela `system_prompts` do banco de dados. 
+### Arquitetura de Salvamento (Após Correção)
 
-Você pode editar isso através do painel admin em: **Configurações > Prompt da AIA**
+O salvamento de mensagens ficará centralizado no frontend:
 
-### Código que carrega o prompt
-O arquivo `supabase/functions/chat-with-ai/index.ts` já busca dinamicamente o prompt do banco na função `getSystemPrompt()`. Não é necessário alterar código, apenas o conteúdo do prompt.
+1. **Mensagem do usuário**: Salva pelo frontend antes de chamar a Edge Function
+2. **Resposta da IA**: Salva pelo frontend após receber a resposta
+3. **Real-time**: Apenas para mensagens de agentes humanos (vindas do admin)
 
-### Alternativa: Atualização via SQL
-Caso prefira, posso gerar um SQL UPDATE para modificar o prompt diretamente no banco, mas recomendo usar o editor visual para manter o histórico de versões.
+### Alternativa Considerada
+
+Poderíamos centralizar no backend (edge function), mas isso exigiria:
+- Remover `saveMessage()` do frontend
+- Garantir que o frontend espere a resposta para exibir
+- Mais complexidade no fluxo
+
+A solução proposta é mais simples e mantém a responsividade do chat.
+
+### Arquivos a Modificar
+
+1. `supabase/functions/chat-with-ai/index.ts` - Remover linha 256
+2. `src/components/chat/AIAssistantPanel.tsx` - Melhorar verificação de duplicatas (linhas 300-304)
