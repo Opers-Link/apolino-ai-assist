@@ -251,10 +251,12 @@ serve(async (req) => {
       console.error('Erro ao registrar uso de IA:', logError);
     }
 
-    // Salvar mensagem do usuário e resposta da IA no banco
-    if (conversationId) {
-      await saveMessages(supabase, conversationId, messages[messages.length - 1].content, aiResponse);
-    }
+    // Mensagens são salvas pelo frontend - não duplicar aqui
+    // O frontend salva a mensagem do usuário antes de chamar esta função
+    // e salva a resposta da IA após recebê-la
+    // if (conversationId) {
+    //   await saveMessages(supabase, conversationId, messages[messages.length - 1].content, aiResponse);
+    // }
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
