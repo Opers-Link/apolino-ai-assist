@@ -730,19 +730,6 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
             </Button>
           </div>
           
-          {/* Link para FAQ */}
-          <div className="mt-3">
-            <Button
-              onClick={() => window.open('/faq', '_blank')}
-              variant="ghost"
-              size="sm"
-              className="w-full gap-2 text-apolar-blue hover:bg-apolar-blue/5 border border-dashed border-apolar-blue/30"
-            >
-              <HelpCircle className="h-4 w-4" />
-              Ver Dúvidas Frequentes (FAQ)
-            </Button>
-          </div>
-          
           {/* CTAs destacados */}
           <div className="flex gap-2 mt-3">
             <Button
@@ -755,14 +742,13 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               Abrir ticket
             </Button>
             <Button
-              onClick={handleRequestHumanHelp}
+              onClick={() => window.open('/faq', '_blank')}
               variant="outline"
               size="sm"
-              disabled={aiDisabled}
-              className="flex-1 gap-2 border-apolar-gold/50 text-apolar-gold-dark hover:bg-apolar-gold hover:text-white transition-all disabled:opacity-50"
+              className="flex-1 gap-2 border-apolar-blue/40 text-apolar-blue hover:bg-apolar-blue/5 transition-all"
             >
-              <Headphones className="h-4 w-4" />
-              Solicitar atendimento
+              <HelpCircle className="h-4 w-4" />
+              Dúvidas Frequentes
             </Button>
           </div>
           
