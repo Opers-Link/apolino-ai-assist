@@ -205,7 +205,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'openai/gpt-5-nano',
         messages: fullMessages,
         stream: true,
       }),
@@ -233,7 +233,7 @@ serve(async (req) => {
     const { error: logError } = await supabase.from('ai_usage_logs').insert({
       conversation_id: conversationId || null,
       session_id: sessionId,
-      model: 'google/gemini-2.5-flash',
+      model: 'openai/gpt-5-nano',
       has_knowledge_modules: modulesUsed.length > 0,
       success: true
     });
@@ -261,7 +261,7 @@ serve(async (req) => {
       
       await supabase.from('ai_usage_logs').insert({
         session_id: null,
-        model: 'google/gemini-2.5-flash',
+        model: 'openai/gpt-5-nano',
         success: false,
         error_message: errorMessage
       });
@@ -413,7 +413,7 @@ Resposta (apenas os nomes):`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'openai/gpt-5-nano',
         messages: [{ role: 'user', content: classificationPrompt }],
         max_tokens: 100
       }),
