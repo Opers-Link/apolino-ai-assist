@@ -588,11 +588,6 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            {!isEmbedded && (
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-600">
-                <Menu className="h-5 w-5" />
-              </Button>
-            )}
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1 shadow-md">
                 <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
