@@ -1,52 +1,59 @@
 
-# Plano: Reorganizar Botões do Footer do Chat
+# Implementar Streaming de Respostas no Chat
 
 ## Resumo
-Ocultar o botão "Solicitar atendimento" (sem remover o fluxo) e mover o botão "Ver Dúvidas Frequentes (FAQ)" para o lugar dele, ao lado do "Abrir ticket".
+Ativar streaming SSE para que as respostas da IA aparecam progressivamente no chat (efeito de digitacao em tempo real), em vez de esperar a resposta completa.
 
-## Alterações
+## Alteracoes
 
-### Arquivo: `src/components/chat/AIAssistantPanel.tsx`
+### 1. Edge Function: `supabase/functions/chat-with-ai/index.ts`
 
-**1. Remover o bloco separado do FAQ** (linhas 733-744):
-O botão "Ver Dúvidas Frequentes" que hoje aparece sozinho acima dos CTAs será removido desse local.
+**Linhas 201-263** - Substituir a chamada sincrona por streaming:
 
-**2. Reorganizar os CTAs** (linhas 746-767):
-- Manter o botão "Abrir ticket" como está
-- Substituir o botão "Solicitar atendimento" pelo botão "Ver Dúvidas Frequentes (FAQ)"
-- O fluxo de `handleRequestHumanHelp` permanece intacto no codigo, apenas o botão fica oculto
+- Adicionar `stream: true` no body da requisicao ao Lovable AI Gateway (linha 209)
+- Remover `await response.json()` e parsing da resposta completa
+- Tratar erros 429/402 retornando JSON antes do stream
+- Registrar uso no `ai_usage_logs` antes de iniciar o stream (sem contagem exata de tokens, pois streaming nao retorna usage)
+- Retornar `response.body` diretamente com header `Content-Type: text/event-stream`
 
-**Layout final dos botões:**
-```
-[  Abrir ticket  ] [ Ver Dúvidas Frequentes ]
-```
-
-## Seção Tecnica
-
-Linhas 733-767 serao substituidas por:
-
-```tsx
-{/* CTAs destacados */}
-<div className="flex gap-2 mt-3">
-  <Button
-    onClick={handleOpenTicket}
-    variant="outline"
-    size="sm"
-    className="flex-1 gap-2 border-apolar-blue/40 text-apolar-blue hover:bg-apolar-blue hover:text-white transition-all"
-  >
-    <Ticket className="h-4 w-4" />
-    Abrir ticket
-  </Button>
-  <Button
-    onClick={() => window.open('/faq', '_blank')}
-    variant="outline"
-    size="sm"
-    className="flex-1 gap-2 border-apolar-blue/40 text-apolar-blue hover:bg-apolar-blue/5 transition-all"
-  >
-    <HelpCircle className="h-4 w-4" />
-    Dúvidas Frequentes
-  </Button>
-</div>
+Codigo principal:
+```typescript
+body: JSON.stringify({
+  model: 'google/gemini-2.5-flash',
+  messages: fullMessages,
+  stream: true,  // NOVO
+}),
 ```
 
-O botao "Solicitar atendimento" sera removido visualmente, mas a funcao `handleRequestHumanHelp` e todo o fluxo de escalonamento humano permanecem no codigo para uso futuro.
+Retorno:
+```typescript
+return new Response(response.body, {
+  headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+});
+```
+
+### 2. Frontend: `src/components/chat/AIAssistantPanel.tsx`
+
+**Linhas 502-549** - Substituir chamada via `openaiService.chatCompletion()` por fetch direto com leitura SSE:
+
+- Fazer fetch direto para a edge function usando `import.meta.env.VITE_SUPABASE_URL`
+- Criar mensagem assistant vazia no estado
+- Ler stream token por token usando `ReadableStream` reader
+- Parsear linhas SSE (data: ...) e extrair `delta.content`
+- Atualizar conteudo da mensagem assistant progressivamente via `setMessages`
+- Tratar `[DONE]`, CRLF, buffer flush, e erros de JSON parcial
+- Salvar mensagem completa no banco apenas apos stream finalizar
+
+Fluxo:
+1. Usuario envia mensagem
+2. Mensagem assistant vazia aparece
+3. Tokens chegam e preenchem a mensagem progressivamente
+4. Ao finalizar, `saveMessage()` persiste a resposta completa
+
+### 3. Impacto no `src/services/openai.ts`
+
+O servico `openaiService` nao sera mais chamado para o chat (o streaming e feito diretamente no componente). O arquivo permanece no projeto para compatibilidade futura.
+
+## Arquivos modificados
+1. `supabase/functions/chat-with-ai/index.ts` - Ativar streaming e retornar SSE
+2. `src/components/chat/AIAssistantPanel.tsx` - Implementar leitura SSE com renderizacao progressiva
