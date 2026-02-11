@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import OpenAIService from '@/services/openai';
+// OpenAIService não é mais usado diretamente - streaming SSE é feito via fetch
 import { supabase } from '@/integrations/supabase/client';
 import aiaLogo from '@/assets/aia-logo.png';
 
@@ -36,7 +36,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  const openaiService = new OpenAIService();
+  
   const MAX_MESSAGES = 30;
   const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
   const MOVIDESK_URL = 'https://apolar.movidesk.com/'; // URL do Movidesk
@@ -520,19 +520,112 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
         content: userMessage.content
       });
 
-      const response = await openaiService.chatCompletion(chatMessages, userContext, currentConversationId);
+      // Streaming SSE - fetch direto para a edge function
+      const CHAT_URL = `https://nodhzumnsioftsftsbsn.supabase.co/functions/v1/chat-with-ai`;
       
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        isUser: false,
-        timestamp: new Date()
-      };
+      const resp = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vZGh6dW1uc2lvZnRzZnRzYnNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc2MjM1NzIsImV4cCI6MjA3MzE5OTU3Mn0._po-LDJsDJe6GQEj2Tw_rqY3MouIZF_3nzHs3-JG_y4`,
+        },
+        body: JSON.stringify({
+          messages: chatMessages,
+          userContext,
+          conversationId: currentConversationId
+        }),
+      });
 
-      setMessages(prev => [...prev, botMessage]);
-      await saveMessage(botMessage.content, false, currentMessageOrder + 1, currentConversationId);
-      setMessageCount(prev => prev + 1);
-      setLastActivityTime(new Date()); // Resetar timer ao receber resposta
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({ error: 'Erro desconhecido' }));
+        if (resp.status === 429) {
+          toast({ title: "Limite excedido", description: errData.error || "Tente novamente em instantes.", variant: "destructive" });
+        } else if (resp.status === 402) {
+          toast({ title: "Créditos insuficientes", description: errData.error || "Entre em contato com o administrador.", variant: "destructive" });
+        }
+        throw new Error(errData.error || 'Erro na resposta da IA');
+      }
+
+      if (!resp.body) throw new Error('Stream não disponível');
+
+      // Criar mensagem assistant vazia para preenchimento progressivo
+      const botId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, { id: botId, content: '', isUser: false, timestamp: new Date() }]);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let fullResponse = '';
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              fullResponse += content;
+              const captured = fullResponse;
+              setMessages(prev =>
+                prev.map(m => m.id === botId ? { ...m, content: captured } : m)
+              );
+            }
+          } catch {
+            // JSON incompleto - recolocar no buffer e aguardar mais dados
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Flush final do buffer
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split('\n')) {
+          if (!raw) continue;
+          if (raw.endsWith('\r')) raw = raw.slice(0, -1);
+          if (raw.startsWith(':') || raw.trim() === '') continue;
+          if (!raw.startsWith('data: ')) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              fullResponse += content;
+            }
+          } catch { /* ignorar restos parciais */ }
+        }
+        // Atualizar mensagem final
+        const finalContent = fullResponse;
+        setMessages(prev =>
+          prev.map(m => m.id === botId ? { ...m, content: finalContent } : m)
+        );
+      }
+
+      // Salvar mensagem completa no banco após stream finalizar
+      if (fullResponse) {
+        await saveMessage(fullResponse, false, currentMessageOrder + 1, currentConversationId);
+        setMessageCount(prev => prev + 1);
+      }
+      setLastActivityTime(new Date());
       
     } catch (error) {
       const errorMessage: Message = {

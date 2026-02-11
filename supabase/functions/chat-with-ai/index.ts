@@ -5,7 +5,7 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Input validation schemas
@@ -207,59 +207,46 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: fullMessages,
+        stream: true,
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Lovable AI API error:', errorData);
-      
       if (response.status === 429) {
-        throw new Error('Limite de requisições excedido. Tente novamente em instantes.');
+        return new Response(
+          JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em instantes.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
       if (response.status === 402) {
-        throw new Error('Créditos insuficientes. Entre em contato com o administrador.');
+        return new Response(
+          JSON.stringify({ error: 'Créditos insuficientes. Entre em contato com o administrador.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      
-      throw new Error(`Lovable AI API error: ${errorData.error?.message || 'Unknown error'}`);
+      const errorText = await response.text();
+      console.error('Lovable AI API error:', response.status, errorText);
+      throw new Error(`Lovable AI API error: ${errorText}`);
     }
 
-    const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
-    
-    console.log('Lovable AI response received:', aiResponse.substring(0, 100) + '...');
-
-    // Buscar módulos para verificar se foram usados
-    const { modules } = await getKnowledgeModules(supabase);
-
-    // Registrar uso de IA no banco com informações de módulos
+    // Registrar uso de IA (sem contagem exata de tokens pois streaming não retorna usage)
     const { error: logError } = await supabase.from('ai_usage_logs').insert({
       conversation_id: conversationId || null,
       session_id: sessionId,
-      prompt_tokens: data.usage?.prompt_tokens || null,
-      completion_tokens: data.usage?.completion_tokens || null,
-      total_tokens: data.usage?.total_tokens || null,
       model: 'google/gemini-2.5-flash',
       has_knowledge_modules: modulesUsed.length > 0,
       success: true
     });
 
-    // Log detalhado da economia de tokens
     console.log(`Modules loaded: ${modulesUsed.length > 0 ? modulesUsed.join(', ') : 'ALL'} (method: ${classificationMethod})`);
 
     if (logError) {
       console.error('Erro ao registrar uso de IA:', logError);
     }
 
-    // Mensagens são salvas pelo frontend - não duplicar aqui
-    // O frontend salva a mensagem do usuário antes de chamar esta função
-    // e salva a resposta da IA após recebê-la
-    // if (conversationId) {
-    //   await saveMessages(supabase, conversationId, messages[messages.length - 1].content, aiResponse);
-    // }
-
-    return new Response(JSON.stringify({ response: aiResponse }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Retornar stream SSE diretamente
+    return new Response(response.body, {
+      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
     });
 
   } catch (error) {
