@@ -39,7 +39,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   
   const MAX_MESSAGES = 30;
   const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
-  const MOVIDESK_URL = 'https://apolar.movidesk.com/'; // URL do Movidesk
+  const MOVIDESK_URL = 'https://apolarimoveis.movidesk.com/Account/Login'; // URL do Movidesk
 
   const handleOpenTicket = () => {
     window.open(MOVIDESK_URL, '_blank');
