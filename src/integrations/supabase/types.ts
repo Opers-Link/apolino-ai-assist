@@ -56,6 +56,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_rates: {
+        Row: {
+          admin_fee: number
+          bank_code: string
+          bank_name: string
+          id: string
+          insurance_rate: number
+          is_active: boolean
+          max_income_ratio: number
+          max_ltv: number
+          max_property_value: number | null
+          max_rate: number
+          max_term_months: number
+          min_property_value: number | null
+          min_rate: number
+          modality: string
+          notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          admin_fee?: number
+          bank_code: string
+          bank_name: string
+          id?: string
+          insurance_rate?: number
+          is_active?: boolean
+          max_income_ratio?: number
+          max_ltv?: number
+          max_property_value?: number | null
+          max_rate?: number
+          max_term_months?: number
+          min_property_value?: number | null
+          min_rate?: number
+          modality?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          admin_fee?: number
+          bank_code?: string
+          bank_name?: string
+          id?: string
+          insurance_rate?: number
+          is_active?: boolean
+          max_income_ratio?: number
+          max_ltv?: number
+          max_property_value?: number | null
+          max_rate?: number
+          max_term_months?: number
+          min_property_value?: number | null
+          min_rate?: number
+          modality?: string
+          notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           agent_notes: string | null

@@ -20,3 +20,9 @@ verify_jwt = true
 
 [functions.send-insights-email]
 verify_jwt = false
+
+[functions.simulate-financing]
+verify_jwt = false
+
+[functions.generate-faq-from-knowledge]
+verify_jwt = false
