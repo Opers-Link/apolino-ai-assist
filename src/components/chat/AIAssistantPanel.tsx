@@ -144,26 +144,28 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     }
   };
 
-  const saveMessage = async (content: string, isUser: boolean, messageOrder: number, convId?: string) => {
+  const saveMessage = async (content: string, isUser: boolean, messageOrder: number, convId?: string): Promise<string | null> => {
     const targetConversationId = convId || conversationId;
     if (!targetConversationId) {
       console.error('Erro: conversationId não disponível para salvar mensagem');
-      return;
+      return null;
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chat_messages')
         .insert({
           conversation_id: targetConversationId,
           content,
           is_user: isUser,
           message_order: messageOrder
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) {
         console.error('Erro ao inserir mensagem:', error);
-        return;
+        return null;
       }
 
       await supabase
@@ -173,8 +175,11 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
           status: 'active'
         })
         .eq('id', targetConversationId);
+
+      return data?.id ?? null;
     } catch (error) {
       console.error('Erro ao salvar mensagem:', error);
+      return null;
     }
   };
 
@@ -298,10 +303,10 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
             };
             
             setMessages(prev => {
-              // Verificar por ID E por conteúdo similar (evita duplicatas de race condition)
+              // Verificar por ID ou por conteúdo idêntico (sem janela de tempo)
               const exists = prev.some(m => 
                 m.id === message.id || 
-                (m.content === message.content && !m.isUser && Math.abs(m.timestamp.getTime() - message.timestamp.getTime()) < 5000)
+                (m.content === message.content && !m.isUser)
               );
               if (exists) return prev;
               return [...prev, message];
@@ -622,7 +627,11 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
 
       // Salvar mensagem completa no banco após stream finalizar
       if (fullResponse) {
-        await saveMessage(fullResponse, false, currentMessageOrder + 1, currentConversationId);
+        const savedId = await saveMessage(fullResponse, false, currentMessageOrder + 1, currentConversationId);
+        // Atualizar ID local para o UUID do banco (evita duplicata do realtime)
+        if (savedId) {
+          setMessages(prev => prev.map(m => m.id === botId ? { ...m, id: savedId } : m));
+        }
         setMessageCount(prev => prev + 1);
       }
       setLastActivityTime(new Date());
