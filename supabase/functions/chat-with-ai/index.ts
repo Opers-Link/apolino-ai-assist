@@ -238,7 +238,7 @@ serve(async (req) => {
       success: true
     });
 
-    console.log(`Modules loaded: ${modulesUsed.length > 0 ? modulesUsed.join(', ') : 'ALL'} (method: ${classificationMethod})`);
+    console.log(`Modules loaded: ${classificationMethod === 'none' ? 'NONE (GPT knowledge only)' : modulesUsed.length > 0 ? modulesUsed.join(', ') : 'ALL'} (method: ${classificationMethod})`);
 
     if (logError) {
       console.error('Erro ao registrar uso de IA:', logError);
@@ -455,7 +455,7 @@ async function classifyRelevantModules(
   userMessage: string,
   availableModules: { name: string, variable_name: string }[],
   apiKey: string
-): Promise<{ modules: string[], method: 'keywords' | 'ai' | 'all' }> {
+): Promise<{ modules: string[], method: 'keywords' | 'ai' | 'all' | 'none' }> {
   // Primeiro: tentar classificação por palavras-chave (custo zero)
   const keywordModules = classifyModulesByKeywords(userMessage);
   
@@ -473,9 +473,9 @@ async function classifyRelevantModules(
     return { modules: aiModules, method: 'ai' };
   }
   
-  // Fallback: carregar todos os módulos
-  console.log('Loading all modules (fallback)');
-  return { modules: [], method: 'all' };
+  // Fallback: não carregar nenhum módulo, GPT responde com conhecimento próprio
+  console.log('No modules matched - GPT will use its own knowledge (fallback none)');
+  return { modules: [], method: 'none' };
 }
 
 // Gerar índice de módulos
@@ -527,7 +527,7 @@ async function getSystemPrompt(
   dbContext?: string,
   userMessage?: string,
   apiKey?: string
-): Promise<{ prompt: string, modulesUsed: string[], classificationMethod: 'keywords' | 'ai' | 'all' }> {
+): Promise<{ prompt: string, modulesUsed: string[], classificationMethod: 'keywords' | 'ai' | 'all' | 'none' }> {
   try {
     // Buscar prompt customizado do banco
     const { data: promptData, error } = await supabase
@@ -557,7 +557,7 @@ async function getSystemPrompt(
     
     // Classificar quais módulos são relevantes para a pergunta do usuário
     let modulesUsed: string[] = [];
-    let classificationMethod: 'keywords' | 'ai' | 'all' = 'all';
+    let classificationMethod: 'keywords' | 'ai' | 'all' | 'none' = 'all';
     
     if (userMessage && apiKey && modules.length > 0) {
       const classification = await classifyRelevantModules(
@@ -569,7 +569,8 @@ async function getSystemPrompt(
       classificationMethod = classification.method;
     }
     
-    const loadAllModules = modulesUsed.length === 0;
+    const loadAllModules = modulesUsed.length === 0 && classificationMethod !== 'none';
+    const loadNoModules = classificationMethod === 'none';
     
     // Substituir {{VERSAO_MODULOS}}
     const globalVersion = config['VERSAO_MODULOS'] || '1.0';
@@ -584,9 +585,9 @@ async function getSystemPrompt(
     for (const module of modules) {
       const regex = new RegExp(`\\{\\{${module.variable_name}\\}\\}`, 'g');
       
-      const shouldLoad = loadAllModules || modulesUsed.some(
+      const shouldLoad = !loadNoModules && (loadAllModules || modulesUsed.some(
         m => m.toUpperCase() === module.variable_name.toUpperCase()
-      );
+      ));
       
       if (shouldLoad) {
         // Carrega o conteúdo completo do módulo
@@ -601,7 +602,7 @@ async function getSystemPrompt(
       }
     }
     
-    console.log(`Loaded ${loadedModulesCount} of ${modules.length} modules (${loadAllModules ? 'all' : 'selective'})`);
+    console.log(`Loaded ${loadedModulesCount} of ${modules.length} modules (${loadNoModules ? 'none - GPT knowledge only' : loadAllModules ? 'all' : 'selective'})`);
     
     // Substituir {{database_context}}
     if (dbContext) {
@@ -637,7 +638,7 @@ async function getSystemPrompt(
     
     return { 
       prompt: customPrompt, 
-      modulesUsed: loadAllModules ? modules.map(m => m.variable_name) : modulesUsed,
+      modulesUsed: loadNoModules ? [] : loadAllModules ? modules.map(m => m.variable_name) : modulesUsed,
       classificationMethod 
     };
   } catch (error) {
