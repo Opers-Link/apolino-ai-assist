@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.generate-faq-from-knowledge]
 verify_jwt = false
+
+[functions.update-bank-rates]
+verify_jwt = false

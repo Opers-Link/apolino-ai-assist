@@ -10,6 +10,7 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import { InsightsPanel } from '@/components/admin/InsightsPanel';
 import { ManualInsightsPanel } from '@/components/admin/ManualInsightsPanel';
 import { FAQManager } from '@/components/admin/FAQManager';
+import { BankRatesManager } from '@/components/admin/BankRatesManager';
 import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Settings, Bot, CheckCircle, Send, FileText, Save, Sparkles, BookOpen, Brain, Zap } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PromptEditor } from '@/components/admin/PromptEditor';
@@ -1068,6 +1069,8 @@ const Admin = () => {
               return renderAtendimentos();
             case 'manual-insights':
               return <ManualInsightsPanel />;
+            case 'bank-rates':
+              return <BankRatesManager />;
             case 'settings':
               return renderSettings();
             case 'faq':

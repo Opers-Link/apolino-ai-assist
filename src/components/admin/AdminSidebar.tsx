@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, UserCircle, Settings, Users, FileUp, HelpCircle } from "lucide-react";
+import { LayoutDashboard, MessageSquare, UserCircle, Settings, Users, FileUp, HelpCircle, Landmark } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
@@ -36,6 +36,11 @@ const mainMenuItems = [
     title: "Insights Manual",
     icon: FileUp,
     value: "manual-insights",
+  },
+  {
+    title: "Taxas Bancárias",
+    icon: Landmark,
+    value: "bank-rates",
   },
 ];
 
