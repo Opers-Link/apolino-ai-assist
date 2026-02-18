@@ -1,28 +1,26 @@
 
 
-# Alterar modelo de IA para OpenAI GPT-5 Mini
+# Atualizar URL do Movidesk
 
-## Resumo
-Trocar o modelo de `openai/gpt-5-nano` para `openai/gpt-5-mini` em todas as 4 ocorrencias na edge function `chat-with-ai`. O GPT-5 Mini oferece melhor equilíbrio entre qualidade e custo, com respostas mais elaboradas e simpáticas.
+## O problema
+O link atual no sistema aponta para `https://apolar.movidesk.com/`, que foi desativado pelo Movidesk/Zenvia. O link correto e funcional e `https://apolarimoveis.movidesk.com/Account/Login`.
 
 ## Alteracoes
 
-### Arquivo: `supabase/functions/chat-with-ai/index.ts`
+Atualizar a URL do Movidesk nos seguintes arquivos:
 
-Substituir **4 ocorrencias** de `openai/gpt-5-nano` por `openai/gpt-5-mini`:
+### 1. `src/components/chat/AIAssistantPanel.tsx` (linha 42)
+- De: `https://apolar.movidesk.com/`
+- Para: `https://apolarimoveis.movidesk.com/Account/Login`
 
-1. **Linha 208** - Chamada principal ao gateway (streaming do chat)
-2. **Linha 236** - Log de uso no `ai_usage_logs` (sucesso)
-3. **Linha 264** - Log de uso no `ai_usage_logs` (erro)
-4. **Linha 416** - Chamada de classificacao automatica de conversas
+### 2. Prompt embutido na edge function `supabase/functions/chat-with-ai/index.ts`
+- Atualizar referencias ao Movidesk no fallback prompt para o novo link
 
-### Deploy
-
-A edge function `chat-with-ai` sera re-deployada automaticamente apos as alteracoes.
+### 3. Migration/Prompt no banco de dados
+- As migrations antigas contem o link antigo, mas o que importa e o prompt ativo salvo na tabela `system_prompts`
+- Sera necessario verificar se o prompt ativo no banco tambem contem o link antigo e, se sim, atualiza-lo manualmente pelo painel admin
 
 ## Secao Tecnica
-
-- O `openai/gpt-5-mini` e equivalente ao `google/gemini-2.5-flash` em capacidade, mas com o estilo de resposta da OpenAI
-- Melhor aderencia a instrucoes longas (master prompt) comparado ao nano
-- Custo intermediario entre o nano e o gpt-5 completo
-
+- O botao "Abrir ticket" usa `window.open()` com a URL definida na constante `MOVIDESK_URL`
+- A edge function tambem referencia o link do Movidesk no prompt de sistema (fallback)
+- O arquivo `src/services/openai.ts` menciona Movidesk mas sem URL direta, nao precisa de alteracao
