@@ -1,34 +1,34 @@
 
 
-# Corrigir respostas duplicadas no chat
+# Fallback inteligente: usar conhecimento proprio do GPT
 
-## Causa raiz
-O chat exibe a resposta da IA duas vezes porque:
+## O que muda
+Quando a classificacao por palavras-chave e por IA nao identificarem nenhum modulo relevante, o sistema **nao carregara nenhum modulo de conhecimento**. O GPT responde usando seu proprio conhecimento sobre o mercado imobiliario, mantendo a identidade e regras da AIA (prompt mestre continua ativo).
 
-1. Durante o streaming, uma mensagem e criada localmente com um ID temporario (ex: `"17394..."`)
-2. Apos o streaming, a mensagem e salva no banco de dados (recebe um UUID)
-3. O listener de tempo real (realtime) detecta o INSERT no banco e tenta adicionar a mesma mensagem novamente
-4. A verificacao de duplicatas compara IDs, mas o ID local e diferente do UUID do banco. A verificacao por conteudo tem uma janela de 5 segundos que pode falhar se o streaming demorar mais
+## Alteracoes no arquivo `supabase/functions/chat-with-ai/index.ts`
 
-## Solucao
-Atualizar o ID local da mensagem do bot para o UUID retornado pelo banco apos o `saveMessage`, e melhorar a logica de deduplicacao no listener realtime.
+**1. Novo metodo de classificacao `none` (linha 458)**
+- Adicionar `'none'` ao tipo de retorno da funcao `classifyRelevantModules`
 
-### Alteracoes no arquivo `src/components/chat/AIAssistantPanel.tsx`
+**2. Alterar o fallback (linhas 476-478)**
+- De: `return { modules: [], method: 'all' }`
+- Para: `return { modules: [], method: 'none' }`
 
-**1. Modificar `saveMessage` para retornar o ID do banco**
-- Alterar a funcao para usar `.select().single()` no insert e retornar o `id` do registro criado
+**3. Atualizar tipos de retorno no `getSystemPrompt` (linha 530)**
+- Incluir `'none'` no tipo `classificationMethod`
 
-**2. Apos salvar a resposta do bot, atualizar o ID local para o UUID do banco**
-- Na linha 624-627, apos o `saveMessage`, usar o ID retornado para atualizar a mensagem no estado local
-- Isso faz com que o listener realtime encontre o mesmo ID e descarte a duplicata
+**4. Logica de carregamento de modulos (linhas 572-604)**
+- Quando `classificationMethod === 'none'`, nao carregar nenhum modulo (todos recebem placeholder)
+- Alterar a logica `loadAllModules` para considerar o novo metodo
 
-**3. Melhorar a deduplicacao no listener realtime**
-- Remover a restricao de janela de 5 segundos na comparacao por conteudo
-- Adicionar verificacao se a mensagem e identica em conteudo (independente do tempo)
+**5. Atualizar log de modulos (linha 241)**
+- Quando o metodo for `'none'`, logar "NONE (GPT knowledge only)"
 
-Essas mudancas garantem que o fluxo funcione assim:
-- Streaming cria mensagem local com ID temporario
-- Banco salva e retorna UUID
-- Estado local e atualizado com o UUID
-- Listener realtime recebe o evento, encontra o UUID no estado e ignora
+**6. Atualizar tipo no fallback do `getSystemPrompt` (linhas 544-546 e 646-649)**
+- Manter `'all'` nos fallbacks de erro (quando nao ha prompt customizado), pois nesses casos o sistema ja usa o prompt hardcoded simples
+
+## Resultado esperado
+- Perguntas especificas sobre processos internos: carrega modulo(s) relevante(s) via keywords ou IA
+- Perguntas genericas (ex: "o que e ITBI?"): GPT responde com conhecimento proprio, sem carregar PDFs
+- Sem risco de erro `context_length_exceeded` no fallback
 
