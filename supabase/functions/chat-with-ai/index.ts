@@ -754,7 +754,7 @@ NÃO resolver:
 ❌ Solicitações fora do escopo (não relacionadas ao CRM/ERP)
 
 Como escalar:
-"Identifiquei que seu caso precisa de atenção especializada. Por gentileza, siga com a abertura de um ticket por meio da plataforma Movidesk, com a seguinte descrição: [resumo detalhado do problema]"
+"Identifiquei que seu caso precisa de atenção especializada. Por gentileza, siga com a abertura de um ticket por meio da plataforma Movidesk (https://apolarimoveis.movidesk.com/Account/Login), com a seguinte descrição: [resumo detalhado do problema]"
 
 📚 MANUAIS E PROCEDIMENTOS
 
@@ -856,7 +856,7 @@ Solução:
 📞 CANAIS DE SUPORTE
 
 - **Chatbot AIA**: Para dúvidas rápidas e procedimentos
-- **Movidesk**: Para tickets técnicos e problemas complexos
+- **Movidesk**: Para tickets técnicos e problemas complexos (https://apolarimoveis.movidesk.com/Account/Login)
 - **Gestor direto**: Para questões de permissões e acessos`;
 
   let fullPrompt = basePrompt;
