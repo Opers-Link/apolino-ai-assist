@@ -355,6 +355,16 @@ const MODULE_KEYWORDS: Record<string, string[]> = {
     'login', 'senha', 'acesso', 'permissão', 'permissao', 'usuário', 'usuario',
     'perfil', 'configuração', 'configuracao', 'geral', 'sistema', 'erro',
     'problema', 'bug', 'não funciona', 'ajuda', 'tutorial'
+  ],
+  'MODULO_SIMULADOR_FINANCIAMENTO': [
+    'simular', 'simulação', 'simulacao', 'simulador', 'financiamento', 'financiar',
+    'parcela', 'parcelas', 'prestação', 'prestacao', 'quanto fico pagando',
+    'taxa de juros', 'juros', 'sac', 'price', 'tabela sac', 'tabela price',
+    'caixa', 'banco do brasil', 'itaú', 'itau', 'bradesco', 'santander',
+    'entrada imóvel', 'entrada imovel', 'valor de entrada', 'minha casa minha vida',
+    'mcmv', 'pro-cotista', 'fgts', 'renda', 'comprometimento de renda',
+    'amortização', 'amortizacao', 'saldo devedor', 'cet', 'custo efetivo',
+    'financiar imóvel', 'financiar imovel', 'crédito imobiliário', 'credito imobiliario'
   ]
 };
 
@@ -521,6 +531,64 @@ function buildModuleContent(module: any): string {
   return content;
 }
 
+// Detectar intenção de simulação de financiamento
+const FINANCING_KEYWORDS = [
+  'simular', 'simulação', 'simulacao', 'simulador', 'financiamento', 'financiar',
+  'parcela', 'prestação', 'prestacao', 'quanto fico pagando', 'quanto vou pagar',
+  'taxa de juros', 'sac', 'price', 'caixa', 'banco do brasil', 'itaú', 'itau',
+  'bradesco', 'santander', 'minha casa', 'mcmv', 'pro-cotista', 'fgts',
+  'crédito imobiliário', 'credito imobiliario', 'financiar imóvel', 'financiar imovel'
+];
+
+function hasFinancingIntent(message: string): boolean {
+  const lower = message.toLowerCase();
+  return FINANCING_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+async function getFinancingContext(supabase: any): Promise<string> {
+  try {
+    const { data: rates, error } = await supabase
+      .from('bank_rates')
+      .select('bank_name, bank_code, modality, min_rate, max_rate, max_ltv, max_term_months, max_income_ratio, notes')
+      .eq('is_active', true);
+
+    if (error || !rates?.length) return '';
+
+    let ctx = `\n\n🏦 SIMULADOR DE FINANCIAMENTO IMOBILIÁRIO\n`;
+    ctx += `═══════════════════════════════════════════════════════\n\n`;
+    ctx += `Você tem acesso a um simulador de financiamento com dados dos seguintes bancos:\n\n`;
+    
+    for (const r of rates) {
+      ctx += `• **${r.bank_name}** (${r.modality}): Taxa ${r.min_rate}% a ${r.max_rate}% a.a. | `;
+      ctx += `LTV máx ${(r.max_ltv * 100).toFixed(0)}% | Prazo máx ${Math.floor(r.max_term_months / 12)} anos\n`;
+    }
+
+    ctx += `\n**INSTRUÇÕES PARA SIMULAÇÃO:**\n`;
+    ctx += `Quando o usuário quiser simular financiamento, colete as seguintes informações:\n`;
+    ctx += `1. Valor do imóvel\n`;
+    ctx += `2. Valor de entrada (ou percentual)\n`;
+    ctx += `3. Prazo desejado (em anos ou meses)\n`;
+    ctx += `4. Renda bruta familiar\n`;
+    ctx += `5. Tipo do imóvel (novo ou usado) - opcional\n`;
+    ctx += `6. Se é primeira propriedade - opcional\n`;
+    ctx += `7. FGTS disponível - opcional\n\n`;
+    ctx += `Após coletar os dados, informe ao usuário que ele pode usar o **Simulador de Financiamento** `;
+    ctx += `disponível em /simulador para ver uma comparação detalhada entre todos os bancos.\n`;
+    ctx += `Enquanto isso, você pode dar estimativas rápidas com base nas taxas acima.\n\n`;
+    ctx += `**Fórmulas de referência:**\n`;
+    ctx += `- SAC: Amortização fixa = Valor Financiado / Meses. Parcela decresce.\n`;
+    ctx += `- Price: Parcela fixa = VP × [i(1+i)^n] / [(1+i)^n - 1]\n`;
+    ctx += `- Comprometimento de renda: máximo 30% da renda bruta\n\n`;
+    ctx += `**IMPORTANTE:** Sempre mencione que os valores são estimativas e que a análise de crédito `;
+    ctx += `final é feita pelo banco. Recomende o simulador completo em /simulador para comparação detalhada.\n`;
+    
+    return ctx;
+  } catch (err) {
+    console.error('Error fetching financing context:', err);
+    return '';
+  }
+}
+
 async function getSystemPrompt(
   supabase: any, 
   userContext?: UserContext, 
@@ -634,6 +702,15 @@ async function getSystemPrompt(
       customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, profile?.display_name || 'Usuário');
     } else {
       customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, 'Usuário');
+    }
+    
+    // Injetar contexto de financiamento se a pergunta for sobre simulação
+    if (userMessage && hasFinancingIntent(userMessage)) {
+      const financingCtx = await getFinancingContext(supabase);
+      if (financingCtx) {
+        customPrompt += financingCtx;
+        console.log('Financing context injected into prompt');
+      }
     }
     
     return { 

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -844,13 +845,22 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               Abrir ticket
             </Button>
             <Button
+              onClick={() => window.open('/simulador', '_blank')}
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10 transition-all"
+            >
+              <Calculator className="h-4 w-4" />
+              Simulador
+            </Button>
+            <Button
               onClick={() => window.open('/faq', '_blank')}
               variant="outline"
               size="sm"
               className="flex-1 gap-2 border-apolar-blue/40 text-apolar-blue hover:bg-apolar-blue/5 transition-all"
             >
               <HelpCircle className="h-4 w-4" />
-              Dúvidas Frequentes
+              FAQ
             </Button>
           </div>
           
