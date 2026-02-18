@@ -37,7 +37,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   
-  const MAX_MESSAGES = 30;
+  const MAX_MESSAGES = 200;
   const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
   const MOVIDESK_URL = 'https://apolarimoveis.movidesk.com/Account/Login'; // URL do Movidesk
 
