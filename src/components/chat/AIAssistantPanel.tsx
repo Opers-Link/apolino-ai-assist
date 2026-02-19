@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle, Calculator } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle, Calculator, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 // OpenAIService não é mais usado diretamente - streaming SSE é feito via fetch
 import { supabase } from '@/integrations/supabase/client';
@@ -820,17 +821,39 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               onKeyDown={handleKeyPress}
               placeholder={conversationClosed ? "Iniciar nova conversa..." : "Pedir para AIA"}
               disabled={isLoading || isCreatingConversation}
-              className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-12 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
+              className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-20 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
               rows={1}
             />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isLoading || isCreatingConversation}
-              size="icon"
-              className="absolute right-2 bottom-2 h-8 w-8 rounded-full bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white transition-colors disabled:opacity-40"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="h-8 w-8 flex items-center justify-center rounded-full text-gray-400 hover:text-apolar-gold hover:bg-apolar-gold/10 transition-colors"
+                    >
+                      <Lightbulb className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[260px] p-3">
+                    <p className="font-semibold text-xs mb-1.5">Dicas para melhores respostas:</p>
+                    <ul className="text-xs space-y-1 text-muted-foreground">
+                      <li>• Faça uma pergunta por vez.</li>
+                      <li>• Use palavras-chave claras (ex: comissão, vistoria, contrato, proposta).</li>
+                      <li>• Seja específico: informe o processo e o sistema envolvidos.</li>
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isLoading || isCreatingConversation}
+                size="icon"
+                className="h-8 w-8 rounded-full bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white transition-colors disabled:opacity-40"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
           {/* CTAs destacados */}
