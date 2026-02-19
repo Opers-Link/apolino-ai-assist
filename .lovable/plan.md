@@ -1,74 +1,28 @@
 
 
-# Integração Firecrawl + Edge Function update-bank-rates
+# Tooltip de Dicas no Chat da AIA
 
-## Etapa 1: Configurar a chave API do Firecrawl
+## O que sera feito
 
-Como você já possui uma conta no Firecrawl, vamos adicionar sua chave API como secret no Supabase. Você pode encontrar sua API Key no dashboard do Firecrawl em [firecrawl.dev/app](https://firecrawl.dev/app) na seção de API Keys.
+Adicionar um icone de dica (lampada ou interrogacao) ao lado do campo de input do chat. Ao passar o mouse ou clicar, exibira um tooltip com as seguintes dicas:
 
-O Lovable vai solicitar a chave via ferramenta segura (o valor nunca fica exposto no código).
+**Dicas para melhores respostas:**
+- Faca uma pergunta por vez.
+- Use palavras-chave claras (ex: comissao, vistoria, contrato, proposta).
+- Seja especifico: informe o processo e o sistema envolvidos.
 
-## Etapa 2: Criar a Edge Function `update-bank-rates`
+## Detalhes Tecnicos
 
-Criar `supabase/functions/update-bank-rates/index.ts` que:
+### Arquivo a modificar
+- `src/components/chat/AIAssistantPanel.tsx`
 
-- Usa o Firecrawl para buscar páginas públicas de taxas dos bancos (Caixa, BB, Itaú, Bradesco, Santander)
-- Envia o conteúdo extraído para a OpenAI para estruturar as taxas em formato JSON
-- Compara com as taxas atuais na tabela `bank_rates`
-- Retorna as diferenças encontradas para revisão do admin (não atualiza automaticamente)
+### Mudancas
+1. Importar os componentes `Tooltip`, `TooltipTrigger`, `TooltipContent` e `TooltipProvider` de `@/components/ui/tooltip`
+2. Importar o icone `Lightbulb` do `lucide-react`
+3. Adicionar um botao com icone de lampada ao lado do campo de texto (dentro da area de input, posicionado a esquerda do botao de enviar)
+4. O tooltip exibira o texto formatado com as 3 dicas usando bullet points
+5. O tooltip usara o componente Radix ja existente no projeto, mantendo consistencia visual
 
-### Fluxo da função
-
-```text
-1. Recebe requisição (pode filtrar por banco específico)
-2. Para cada banco, faz scraping via Firecrawl das páginas de taxas
-3. Envia o markdown extraído para a OpenAI com prompt estruturado
-4. OpenAI retorna as taxas em JSON padronizado
-5. Compara com dados atuais do banco de dados
-6. Retorna relatório com taxas encontradas e diferenças
-```
-
-### URLs-alvo para scraping (páginas informativas, não simuladores)
-
-- Caixa: páginas institucionais de taxas de juros habitacional
-- Banco do Brasil: tabela de taxas de crédito imobiliário
-- Itaú, Bradesco, Santander: páginas de taxas vigentes
-
-## Etapa 3: Adicionar seção no painel Admin
-
-Criar um componente `BankRatesManager` no admin que permite:
-
-- Visualizar todas as taxas atuais por banco
-- Editar taxas manualmente (formulário inline)
-- Botão "Buscar Atualizações" que chama a edge function `update-bank-rates`
-- Exibir diferenças encontradas com opção de aprovar/rejeitar cada atualização
-- Histórico de quando as taxas foram atualizadas por último
-
-Adicionar item "Taxas Bancárias" no menu lateral do admin (AdminSidebar).
-
-## Etapa 4: Registrar no config.toml
-
-Adicionar a nova edge function no `supabase/config.toml` com `verify_jwt = false`.
-
----
-
-## Detalhes Técnicos
-
-### Arquivos a criar
-- `supabase/functions/update-bank-rates/index.ts` -- edge function de scraping
-- `src/components/admin/BankRatesManager.tsx` -- painel de gerenciamento de taxas
-
-### Arquivos a modificar
-- `supabase/config.toml` -- registrar nova edge function
-- `src/components/admin/AdminSidebar.tsx` -- adicionar item "Taxas Bancárias"
-- `src/pages/Admin.tsx` -- renderizar o novo componente na tab correspondente
-
-### Secrets necessários
-- `FIRECRAWL_API_KEY` -- sua chave API do Firecrawl (será solicitada)
-- `OPENAI_API_KEY` -- já configurada
-
-### Segurança
-- A edge function valida autenticação do admin antes de executar
-- Taxas não são atualizadas automaticamente, passam por revisão
-- Rate limiting implícito pelo uso manual
+### Posicionamento
+O icone ficara dentro da barra de input (ao lado direito, antes do botao de enviar), mantendo o layout limpo e integrado ao design atual.
 
