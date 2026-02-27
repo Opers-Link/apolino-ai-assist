@@ -1,32 +1,52 @@
 
 
-# Diagnostico: Mensagens nao estao sendo salvas
+# Otimização de Velocidade do Chat da AIA
 
-## Problema identificado
+## Gargalos Identificados
 
-Analisei o banco de dados e encontrei que **todas as conversas apos 19/02 (8+ conversas) tem 0 mensagens**, enquanto conversas anteriores tem mensagens normalmente. O problema tem duas causas:
+Analisei o fluxo completo da Edge Function `chat-with-ai` e identifiquei **5 gargalos principais** que estão atrasando a resposta:
 
-### Causa 1: Falha silenciosa no salvamento de mensagens
+### 1. Consultas ao banco de dados sequenciais
+A função faz ~6 queries ao Supabase uma após a outra (rate limit, conversa, módulos, arquivos de cada módulo, prompt, FAQ, perfil). Cada query adiciona latência de rede.
 
-A funcao `saveMessage` usa `.insert().select('id').single()`. A politica de SELECT na tabela `chat_messages` **so permite admins**. Quando um usuario anonimo envia uma mensagem:
-- O INSERT e executado
-- O `.select('id').single()` falha porque o usuario nao tem permissao de SELECT
-- O PostgREST pode reverter a operacao nesse cenario, resultando em 0 mensagens salvas
-- A funcao retorna `null` silenciosamente
+### 2. Busca de arquivos dos módulos em loop
+Os arquivos de conhecimento são buscados **um módulo por vez** num loop `for`, em vez de uma única query.
 
-### Causa 2: Bug de duplicacao de conversas
+### 3. Segunda chamada de IA para classificação
+Quando as palavras-chave não identificam o módulo, uma chamada extra ao modelo de IA é feita **antes** da chamada principal — dobrando o tempo de resposta nesses casos.
 
-Quando o usuario reinicia uma conversa apos encerramento (`conversationClosed = true`), o codigo cria uma conversa, atualiza o state React (assincrono), mas na sequencia le o state antigo (vazio), criando uma **segunda conversa**. A primeira fica com 0 mensagens.
+### 4. Modelo `openai/gpt-5-mini`
+Apesar de ser bom, existem modelos mais rápidos disponíveis no gateway (ex: `google/gemini-2.5-flash` ou `google/gemini-3-flash-preview`).
 
-## Correcoes
+### 5. Contexto de financiamento carregado sempre que detectado
+Mesmo que não seja necessário, o contexto de taxas bancárias é buscado e injetado no prompt.
 
-### Arquivo: `src/components/chat/AIAssistantPanel.tsx`
+---
 
-**Correcao 1 - `saveMessage`**: Gerar o UUID no cliente via `crypto.randomUUID()` e usar apenas `.insert()` sem `.select().single()`, eliminando a dependencia da politica de SELECT.
+## Correções Propostas
 
-**Correcao 2 - `handleSendMessage`**: No bloco `conversationClosed`, atribuir o novo ID diretamente a variavel local `currentConversationId` em vez de depender do state React assincrono, evitando a criacao duplicada.
+### Arquivo: `supabase/functions/chat-with-ai/index.ts`
 
-### Migracao SQL (opcional)
+**A. Paralelizar queries ao banco** — Executar rate limit check, conversation check, knowledge modules, system prompt e FAQ em paralelo com `Promise.all` em vez de sequencialmente. Estimativa: **-200~400ms**.
 
-Limpar conversas vazias com 0 mensagens que ficaram orfas no banco.
+**B. Query única para arquivos de módulos** — Substituir o loop que busca arquivos módulo a módulo por uma única query com join ou busca geral de `knowledge_module_files`. Estimativa: **-100~300ms**.
+
+**C. Eliminar classificação por IA** — Quando palavras-chave não encontram módulos, em vez de fazer uma segunda chamada de IA (que custa ~1-3s), usar o fallback `none` diretamente (GPT responde com conhecimento próprio). Estimativa: **-1~3s nos casos afetados**.
+
+**D. Trocar modelo para `google/gemini-3-flash-preview`** — Modelo mais rápido com qualidade comparável para este caso de uso (assistente de suporte). Estimativa: **-500ms~1s** no tempo de primeira resposta (TTFB).
+
+**E. Adicionar `temperature: 0.7` e `max_tokens: 1500`** — Limitar o tamanho da resposta para acelerar a geração e evitar respostas excessivamente longas.
+
+---
+
+## Resumo do Impacto Esperado
+
+| Otimização | Ganho estimado |
+|---|---|
+| Paralelizar queries DB | 200-400ms |
+| Query única para arquivos | 100-300ms |
+| Remover classificação IA | 1-3s (em ~30% dos casos) |
+| Modelo mais rápido | 500ms-1s |
+| Limitar tokens | 200-500ms |
+| **Total** | **~1-4 segundos mais rápido** |
 
