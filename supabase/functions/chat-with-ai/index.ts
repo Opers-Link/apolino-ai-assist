@@ -44,8 +44,11 @@ interface UserContext {
 }
 
 // Rate limiting configuration
-const RATE_LIMIT_REQUESTS = 200; // Max requests per window
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour window
+const RATE_LIMIT_REQUESTS = 200;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+// ============ OTIMIZAÇÃO: Modelo mais rápido ============
+const AI_MODEL = 'google/gemini-3-flash-preview';
 
 async function checkRateLimit(supabase: any, sessionId: string): Promise<{ allowed: boolean; remaining: number }> {
   try {
@@ -59,7 +62,6 @@ async function checkRateLimit(supabase: any, sessionId: string): Promise<{ allow
 
     if (error) {
       console.error('Rate limit check error:', error);
-      // Allow request if rate limit check fails (fail open for usability)
       return { allowed: true, remaining: RATE_LIMIT_REQUESTS };
     }
 
@@ -93,7 +95,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate request with Zod
     const validationResult = requestSchema.safeParse(body);
     if (!validationResult.success) {
       console.error('Validation error:', validationResult.error.errors);
@@ -122,19 +123,37 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not set');
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Generate session ID for rate limiting (use conversationId, userContext.userId, or IP)
     const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
                      req.headers.get('x-real-ip') || 
                      'unknown';
     const sessionId = userContext?.userId || conversationId || `ip_${clientIP}`;
 
-    // Check rate limit
-    const rateLimitResult = await checkRateLimit(supabase, sessionId);
+    // ============ OTIMIZAÇÃO A: Paralelizar queries iniciais ============
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+    
+    // Executar rate limit, conversation check e busca de dados em paralelo
+    const [rateLimitResult, conversationCheck, promptData, modulesData, allModuleFiles, configData] = await Promise.all([
+      // 1. Rate limit
+      checkRateLimit(supabase, sessionId),
+      // 2. Conversation check (se temos conversationId)
+      conversationId 
+        ? supabase.from('chat_conversations').select('ai_enabled, assigned_to').eq('id', conversationId).single()
+        : Promise.resolve({ data: null }),
+      // 3. System prompt
+      supabase.from('system_prompts').select('content').eq('name', 'master_prompt_aia').eq('is_active', true).single(),
+      // 4. Knowledge modules
+      supabase.from('knowledge_modules').select('id, name, variable_name, version, description').order('display_order'),
+      // 5. OTIMIZAÇÃO B: Query ÚNICA para TODOS os arquivos de módulos
+      supabase.from('knowledge_module_files').select('module_id, file_name, extracted_text').order('uploaded_at', { ascending: false }),
+      // 6. Knowledge config
+      supabase.from('knowledge_config').select('key, value'),
+    ]);
+
+    // Verificar rate limit
     if (!rateLimitResult.allowed) {
       console.warn('Rate limit exceeded for session:', sessionId);
       return new Response(
@@ -144,60 +163,74 @@ serve(async (req) => {
         }),
         { 
           status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Retry-After': '3600'
-          } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } 
         }
       );
     }
 
-    // Verificar se IA está desabilitada para esta conversa
-    if (conversationId) {
-      const { data: conversation } = await supabase
-        .from('chat_conversations')
-        .select('ai_enabled, assigned_to')
-        .eq('id', conversationId)
-        .single();
+    // Verificar se IA está desabilitada
+    if (conversationCheck.data && conversationCheck.data.ai_enabled === false) {
+      console.log('AI disabled for this conversation');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Esta conversa está sendo atendida por um humano. Aguarde o atendente.',
+          assigned: true 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-      if (conversation && conversation.ai_enabled === false) {
-        console.log('AI disabled for this conversation, returning error');
-        return new Response(
-          JSON.stringify({ 
-            error: 'Esta conversa está sendo atendida por um humano. Aguarde o atendente.',
-            assigned: true 
-          }),
-          { 
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
+    // Montar módulos com arquivos (sem loop de queries)
+    const modules = (modulesData.data || []).map((mod: any) => ({
+      ...mod,
+      files: (allModuleFiles.data || []).filter((f: any) => f.module_id === mod.id)
+    }));
+
+    const config: Record<string, string> = {};
+    (configData.data || []).forEach((item: any) => { config[item.key] = item.value; });
+
+    // ============ OTIMIZAÇÃO C: Classificação APENAS por keywords (sem IA) ============
+    let modulesUsed: string[] = [];
+    let classificationMethod: 'keywords' | 'none' = 'none';
+
+    if (modules.length > 0) {
+      const keywordModules = classifyModulesByKeywords(lastUserMessage);
+      if (keywordModules.length > 0) {
+        modulesUsed = keywordModules;
+        classificationMethod = 'keywords';
+        console.log(`Module classification by keywords: ${keywordModules.join(', ')}`);
+      } else {
+        // Fallback direto: GPT responde com conhecimento próprio (sem chamada de IA extra)
+        console.log('No keyword match - GPT will use own knowledge (no AI classification call)');
       }
     }
 
-    // Buscar contexto do banco de dados
-    const dbContext = await gatherDatabaseContext(supabase, userContext);
-    
-    // Extrair a última mensagem do usuário para classificação de módulos
-    const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
-    
-    // Buscar prompt customizado do banco ou usar fallback (com seleção inteligente de módulos)
-    const { prompt: systemPrompt, modulesUsed, classificationMethod } = await getSystemPrompt(
-      supabase, 
-      userContext, 
-      dbContext,
+    // Montar prompt do sistema
+    const systemPrompt = buildFinalPrompt(
+      promptData.data?.content,
+      modules,
+      config,
+      modulesUsed,
+      classificationMethod,
+      userContext,
       lastUserMessage,
-      LOVABLE_API_KEY
+      supabase
     );
-    
+
+    // Buscar profile name em paralelo com o financing context (se necessário)
+    const needsFinancing = hasFinancingIntent(lastUserMessage);
+    const [resolvedPrompt] = await Promise.all([
+      resolvePromptAsync(systemPrompt, userContext, supabase, needsFinancing),
+    ]);
+
     const fullMessages = [
-      { role: 'system' as const, content: systemPrompt },
+      { role: 'system' as const, content: resolvedPrompt },
       ...messages
     ];
 
     console.log('Making Lovable AI request with', fullMessages.length, 'messages');
 
+    // ============ OTIMIZAÇÃO D+E: Modelo rápido + limitar tokens ============
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -205,9 +238,11 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
+        model: AI_MODEL,
         messages: fullMessages,
         stream: true,
+        temperature: 0.7,
+        max_tokens: 1500,
       }),
     });
 
@@ -229,22 +264,19 @@ serve(async (req) => {
       throw new Error(`Lovable AI API error: ${errorText}`);
     }
 
-    // Registrar uso de IA (sem contagem exata de tokens pois streaming não retorna usage)
-    const { error: logError } = await supabase.from('ai_usage_logs').insert({
+    // Log de uso (fire-and-forget, não bloqueia a resposta)
+    supabase.from('ai_usage_logs').insert({
       conversation_id: conversationId || null,
       session_id: sessionId,
-      model: 'openai/gpt-5-mini',
+      model: AI_MODEL,
       has_knowledge_modules: modulesUsed.length > 0,
       success: true
+    }).then(({ error: logError }: any) => {
+      if (logError) console.error('Erro ao registrar uso de IA:', logError);
     });
 
-    console.log(`Modules loaded: ${classificationMethod === 'none' ? 'NONE (GPT knowledge only)' : modulesUsed.length > 0 ? modulesUsed.join(', ') : 'ALL'} (method: ${classificationMethod})`);
+    console.log(`Modules loaded: ${classificationMethod === 'none' ? 'NONE (GPT knowledge only)' : modulesUsed.join(', ')} (method: ${classificationMethod})`);
 
-    if (logError) {
-      console.error('Erro ao registrar uso de IA:', logError);
-    }
-
-    // Retornar stream SSE diretamente
     return new Response(response.body, {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
     });
@@ -253,7 +285,6 @@ serve(async (req) => {
     console.error('Error in chat-with-ai function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    // Registrar erro de uso de IA
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -261,7 +292,7 @@ serve(async (req) => {
       
       await supabase.from('ai_usage_logs').insert({
         session_id: null,
-        model: 'openai/gpt-5-mini',
+        model: AI_MODEL,
         success: false,
         error_message: errorMessage
       });
@@ -275,58 +306,6 @@ serve(async (req) => {
     });
   }
 });
-
-// Buscar módulos de conhecimento com texto extraído
-async function getKnowledgeModules(supabase: any) {
-  try {
-    // Buscar módulos com arquivos
-    const { data: modules, error: modulesError } = await supabase
-      .from('knowledge_modules')
-      .select(`
-        id,
-        name,
-        variable_name,
-        version,
-        description
-      `)
-      .order('display_order');
-
-    if (modulesError) {
-      console.error('Error fetching modules:', modulesError);
-      return { modules: [], config: {} };
-    }
-
-    // Buscar arquivos com texto extraído para cada módulo
-    const modulesWithContent = [];
-    for (const module of modules || []) {
-      const { data: files } = await supabase
-        .from('knowledge_module_files')
-        .select('file_name, extracted_text')
-        .eq('module_id', module.id)
-        .order('uploaded_at', { ascending: false });
-
-      modulesWithContent.push({
-        ...module,
-        files: files || []
-      });
-    }
-
-    // Buscar configuração global
-    const { data: configData } = await supabase
-      .from('knowledge_config')
-      .select('key, value');
-
-    const config: Record<string, string> = {};
-    (configData || []).forEach((item: any) => {
-      config[item.key] = item.value;
-    });
-
-  return { modules: modulesWithContent, config };
-  } catch (error) {
-    console.error('Error in getKnowledgeModules:', error);
-    return { modules: [], config: {} };
-  }
-}
 
 // Mapeamento de palavras-chave para módulos
 const MODULE_KEYWORDS: Record<string, string[]> = {
@@ -368,7 +347,6 @@ const MODULE_KEYWORDS: Record<string, string[]> = {
   ]
 };
 
-// Classificar módulos relevantes por palavras-chave
 function classifyModulesByKeywords(userMessage: string): string[] {
   const messageLower = userMessage.toLowerCase();
   const relevantModules: Set<string> = new Set();
@@ -385,107 +363,12 @@ function classifyModulesByKeywords(userMessage: string): string[] {
   // Sempre incluir MODULO_TRANSVERSAL como fallback
   relevantModules.add('MODULO_TRANSVERSAL');
   
-  // Se não encontrou nada específico além do transversal, carregar todos
+  // Se não encontrou nada específico além do transversal, retorna vazio
   if (relevantModules.size === 1) {
-    return []; // Retorna vazio para indicar "carregar todos"
+    return [];
   }
   
   return Array.from(relevantModules);
-}
-
-// Classificar módulos usando IA (fallback para casos complexos)
-async function classifyModulesWithAI(
-  userMessage: string, 
-  availableModules: { name: string, variable_name: string }[],
-  apiKey: string
-): Promise<string[]> {
-  try {
-    const moduleList = availableModules.map(m => `- ${m.variable_name}: ${m.name}`).join('\n');
-    
-    const classificationPrompt = `Analise a pergunta do usuário e retorne APENAS os nomes das variáveis dos módulos relevantes, separados por vírgula.
-
-Módulos disponíveis:
-${moduleList}
-
-Pergunta do usuário: "${userMessage}"
-
-Regras:
-- Retorne APENAS os variable_names separados por vírgula, sem explicação
-- Sempre inclua MODULO_TRANSVERSAL
-- Se a pergunta for muito genérica, retorne: TODOS
-
-Resposta (apenas os nomes):`;
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
-        messages: [{ role: 'user', content: classificationPrompt }],
-        max_tokens: 100
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('AI classification failed, loading all modules');
-      return [];
-    }
-
-    const data = await response.json();
-    const result = data.choices[0].message.content.trim();
-    
-    if (result.toUpperCase().includes('TODOS')) {
-      return [];
-    }
-    
-    const moduleNames = result.split(',').map((m: string) => m.trim().toUpperCase());
-    
-    // Validar que os módulos retornados existem
-    const validModules = moduleNames.filter((name: string) => 
-      availableModules.some(m => m.variable_name.toUpperCase() === name)
-    );
-    
-    // Garantir que MODULO_TRANSVERSAL está incluído
-    if (!validModules.includes('MODULO_TRANSVERSAL')) {
-      validModules.push('MODULO_TRANSVERSAL');
-    }
-    
-    return validModules.length > 0 ? validModules : [];
-  } catch (error) {
-    console.error('Error in AI classification:', error);
-    return [];
-  }
-}
-
-// Função principal de classificação (híbrida)
-async function classifyRelevantModules(
-  userMessage: string,
-  availableModules: { name: string, variable_name: string }[],
-  apiKey: string
-): Promise<{ modules: string[], method: 'keywords' | 'ai' | 'all' | 'none' }> {
-  // Primeiro: tentar classificação por palavras-chave (custo zero)
-  const keywordModules = classifyModulesByKeywords(userMessage);
-  
-  if (keywordModules.length > 0) {
-    console.log(`Module classification by keywords: ${keywordModules.join(', ')}`);
-    return { modules: keywordModules, method: 'keywords' };
-  }
-  
-  // Se palavras-chave não funcionaram, usar IA para classificar
-  console.log('Keywords inconclusive, trying AI classification...');
-  const aiModules = await classifyModulesWithAI(userMessage, availableModules, apiKey);
-  
-  if (aiModules.length > 0) {
-    console.log(`Module classification by AI: ${aiModules.join(', ')}`);
-    return { modules: aiModules, method: 'ai' };
-  }
-  
-  // Fallback: não carregar nenhum módulo, GPT responde com conhecimento próprio
-  console.log('No modules matched - GPT will use its own knowledge (fallback none)');
-  return { modules: [], method: 'none' };
 }
 
 // Gerar índice de módulos
@@ -507,7 +390,6 @@ function buildModuleIndex(modules: any[]): string {
   return index;
 }
 
-// Gerar conteúdo de um módulo
 function buildModuleContent(module: any): string {
   if (!module.files?.length) {
     return `[Módulo ${module.name}: Nenhum documento disponível]`;
@@ -565,13 +447,9 @@ async function getFinancingContext(supabase: any): Promise<string> {
 
     ctx += `\n**INSTRUÇÕES PARA SIMULAÇÃO:**\n`;
     ctx += `Quando o usuário quiser simular financiamento, colete as seguintes informações:\n`;
-    ctx += `1. Valor do imóvel\n`;
-    ctx += `2. Valor de entrada (ou percentual)\n`;
-    ctx += `3. Prazo desejado (em anos ou meses)\n`;
-    ctx += `4. Renda bruta familiar\n`;
-    ctx += `5. Tipo do imóvel (novo ou usado) - opcional\n`;
-    ctx += `6. Se é primeira propriedade - opcional\n`;
-    ctx += `7. FGTS disponível - opcional\n\n`;
+    ctx += `1. Valor do imóvel\n2. Valor de entrada (ou percentual)\n3. Prazo desejado (em anos ou meses)\n`;
+    ctx += `4. Renda bruta familiar\n5. Tipo do imóvel (novo ou usado) - opcional\n`;
+    ctx += `6. Se é primeira propriedade - opcional\n7. FGTS disponível - opcional\n\n`;
     ctx += `Após coletar os dados, informe ao usuário que ele pode usar o **Simulador de Financiamento** `;
     ctx += `disponível em /simulador para ver uma comparação detalhada entre todos os bancos.\n`;
     ctx += `Enquanto isso, você pode dar estimativas rápidas com base nas taxas acima.\n\n`;
@@ -589,213 +467,121 @@ async function getFinancingContext(supabase: any): Promise<string> {
   }
 }
 
-async function getSystemPrompt(
-  supabase: any, 
-  userContext?: UserContext, 
-  dbContext?: string,
+// Montar prompt final (síncrono, sem queries)
+function buildFinalPrompt(
+  customPromptContent: string | null,
+  modules: any[],
+  config: Record<string, string>,
+  modulesUsed: string[],
+  classificationMethod: 'keywords' | 'none',
+  userContext?: UserContext,
   userMessage?: string,
-  apiKey?: string
-): Promise<{ prompt: string, modulesUsed: string[], classificationMethod: 'keywords' | 'ai' | 'all' | 'none' }> {
-  try {
-    // Buscar prompt customizado do banco
-    const { data: promptData, error } = await supabase
-      .from('system_prompts')
-      .select('content')
-      .eq('name', 'master_prompt_aia')
-      .eq('is_active', true)
-      .single();
+  supabase?: any
+): string {
+  if (!customPromptContent) {
+    return buildSystemPrompt(userContext);
+  }
 
-    if (error || !promptData?.content) {
-      console.log('No custom prompt found, using fallback');
-      return { 
-        prompt: buildSystemPrompt(userContext, dbContext), 
-        modulesUsed: [], 
-        classificationMethod: 'all' 
-      };
-    }
-
-    console.log('Using custom prompt from database');
+  let customPrompt = customPromptContent;
+  
+  const loadNoModules = classificationMethod === 'none';
+  const loadAllModules = modulesUsed.length === 0 && !loadNoModules;
+  
+  // Substituir {{VERSAO_MODULOS}}
+  const globalVersion = config['VERSAO_MODULOS'] || '1.0';
+  customPrompt = customPrompt.replace(/\{\{VERSAO_MODULOS\}\}/g, globalVersion);
+  
+  // Substituir {{INDICE_DE_MODULOS}}
+  const moduleIndex = buildModuleIndex(modules);
+  customPrompt = customPrompt.replace(/\{\{INDICE_DE_MODULOS\}\}/g, moduleIndex);
+  
+  // Substituir variáveis de cada módulo
+  let loadedModulesCount = 0;
+  for (const module of modules) {
+    const regex = new RegExp(`\\{\\{${module.variable_name}\\}\\}`, 'g');
     
-    // Substituir variáveis dinâmicas
-    let customPrompt = promptData.content;
+    const shouldLoad = !loadNoModules && (loadAllModules || modulesUsed.some(
+      (m: string) => m.toUpperCase() === module.variable_name.toUpperCase()
+    ));
     
-    // Buscar módulos de conhecimento
-    const { modules, config } = await getKnowledgeModules(supabase);
-    console.log(`Found ${modules.length} knowledge modules`);
-    
-    // Classificar quais módulos são relevantes para a pergunta do usuário
-    let modulesUsed: string[] = [];
-    let classificationMethod: 'keywords' | 'ai' | 'all' | 'none' = 'all';
-    
-    if (userMessage && apiKey && modules.length > 0) {
-      const classification = await classifyRelevantModules(
-        userMessage,
-        modules.map(m => ({ name: m.name, variable_name: m.variable_name })),
-        apiKey
+    if (shouldLoad) {
+      const moduleContent = buildModuleContent(module);
+      customPrompt = customPrompt.replace(regex, moduleContent);
+      loadedModulesCount++;
+    } else {
+      customPrompt = customPrompt.replace(regex, 
+        `[📁 Módulo "${module.name}" disponível - não carregado para esta consulta. Se precisar de informações deste módulo, pergunte especificamente sobre ${module.name.toLowerCase()}.]\n`
       );
-      modulesUsed = classification.modules;
-      classificationMethod = classification.method;
     }
-    
-    const loadAllModules = modulesUsed.length === 0 && classificationMethod !== 'none';
-    const loadNoModules = classificationMethod === 'none';
-    
-    // Substituir {{VERSAO_MODULOS}}
-    const globalVersion = config['VERSAO_MODULOS'] || '1.0';
-    customPrompt = customPrompt.replace(/\{\{VERSAO_MODULOS\}\}/g, globalVersion);
-    
-    // Substituir {{INDICE_DE_MODULOS}}
-    const moduleIndex = buildModuleIndex(modules);
-    customPrompt = customPrompt.replace(/\{\{INDICE_DE_MODULOS\}\}/g, moduleIndex);
-    
-    // Substituir variáveis de cada módulo (carrega apenas os relevantes)
-    let loadedModulesCount = 0;
-    for (const module of modules) {
-      const regex = new RegExp(`\\{\\{${module.variable_name}\\}\\}`, 'g');
-      
-      const shouldLoad = !loadNoModules && (loadAllModules || modulesUsed.some(
-        m => m.toUpperCase() === module.variable_name.toUpperCase()
-      ));
-      
-      if (shouldLoad) {
-        // Carrega o conteúdo completo do módulo
-        const moduleContent = buildModuleContent(module);
-        customPrompt = customPrompt.replace(regex, moduleContent);
-        loadedModulesCount++;
-      } else {
-        // Substitui por placeholder indicando que o módulo existe mas não foi carregado
-        customPrompt = customPrompt.replace(regex, 
-          `[📁 Módulo "${module.name}" disponível - não carregado para esta consulta. Se precisar de informações deste módulo, pergunte especificamente sobre ${module.name.toLowerCase()}.]\n`
-        );
-      }
-    }
-    
-    console.log(`Loaded ${loadedModulesCount} of ${modules.length} modules (${loadNoModules ? 'none - GPT knowledge only' : loadAllModules ? 'all' : 'selective'})`);
-    
-    // Substituir {{database_context}}
-    if (dbContext) {
-      customPrompt = customPrompt.replace(/\{\{database_context\}\}/g, dbContext);
-    } else {
-      customPrompt = customPrompt.replace(/\{\{database_context\}\}/g, '');
-    }
-    
-    // Substituir {{user_context}}
-    if (userContext) {
-      let userContextStr = '';
-      if (userContext.userId) userContextStr += `- ID do usuário: ${userContext.userId}\n`;
-      if (userContext.currentSystem) userContextStr += `- Sistema atual: ${userContext.currentSystem}\n`;
-      if (userContext.permissions?.length) userContextStr += `- Permissões: ${userContext.permissions.join(', ')}\n`;
-      if (userContext.lastAction) userContextStr += `- Última ação: ${userContext.lastAction}\n`;
-      customPrompt = customPrompt.replace(/\{\{user_context\}\}/g, userContextStr || 'Contexto não disponível');
-    } else {
-      customPrompt = customPrompt.replace(/\{\{user_context\}\}/g, '');
-    }
-    
-    // Substituir {{user_name}}
-    if (userContext?.userId) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('user_id', userContext.userId)
-        .single();
-      
-      customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, profile?.display_name || 'Usuário');
-    } else {
-      customPrompt = customPrompt.replace(/\{\{user_name\}\}/g, 'Usuário');
-    }
-    
-    // Injetar contexto de financiamento se a pergunta for sobre simulação
-    if (userMessage && hasFinancingIntent(userMessage)) {
-      const financingCtx = await getFinancingContext(supabase);
-      if (financingCtx) {
-        customPrompt += financingCtx;
-        console.log('Financing context injected into prompt');
-      }
-    }
-    
-    return { 
-      prompt: customPrompt, 
-      modulesUsed: loadNoModules ? [] : loadAllModules ? modules.map(m => m.variable_name) : modulesUsed,
-      classificationMethod 
-    };
-  } catch (error) {
-    console.error('Error fetching custom prompt:', error);
-    return { 
-      prompt: buildSystemPrompt(userContext, dbContext), 
-      modulesUsed: [], 
-      classificationMethod: 'all' 
-    };
   }
+  
+  console.log(`Loaded ${loadedModulesCount} of ${modules.length} modules (${loadNoModules ? 'none - GPT knowledge only' : loadAllModules ? 'all' : 'selective'})`);
+  
+  // Substituir {{database_context}} - removido busca de contexto pesado
+  customPrompt = customPrompt.replace(/\{\{database_context\}\}/g, '');
+  
+  // Substituir {{user_context}}
+  if (userContext) {
+    let userContextStr = '';
+    if (userContext.userId) userContextStr += `- ID do usuário: ${userContext.userId}\n`;
+    if (userContext.currentSystem) userContextStr += `- Sistema atual: ${userContext.currentSystem}\n`;
+    if (userContext.permissions?.length) userContextStr += `- Permissões: ${userContext.permissions.join(', ')}\n`;
+    if (userContext.lastAction) userContextStr += `- Última ação: ${userContext.lastAction}\n`;
+    customPrompt = customPrompt.replace(/\{\{user_context\}\}/g, userContextStr || 'Contexto não disponível');
+  } else {
+    customPrompt = customPrompt.replace(/\{\{user_context\}\}/g, '');
+  }
+  
+  // {{user_name}} será resolvido assincronamente em resolvePromptAsync
+  
+  return customPrompt;
 }
 
-async function gatherDatabaseContext(supabase: any, userContext?: UserContext) {
-  let context = '';
+// Resolver partes assíncronas do prompt (profile name + financing context)
+async function resolvePromptAsync(
+  prompt: string,
+  userContext: UserContext | undefined,
+  supabase: any,
+  needsFinancing: boolean
+): Promise<string> {
+  let resolvedPrompt = prompt;
 
-  try {
-    // Buscar estatísticas gerais do sistema
-    const { data: conversationsData } = await supabase
-      .from('chat_conversations')
-      .select('category, sentiment, tags')
-      .limit(50);
-
-    if (conversationsData?.length) {
-      const categories = [...new Set(conversationsData.map((c: any) => c.category))];
-      const sentiments = [...new Set(conversationsData.map((c: any) => c.sentiment))];
-      
-      context += `\nEstatísticas do sistema:\n`;
-      context += `- Categorias frequentes: ${categories.join(', ')}\n`;
-      context += `- Sentimentos dos usuários: ${sentiments.join(', ')}\n`;
-      context += `- Total de conversas recentes: ${conversationsData.length}\n`;
-    }
-
-    // Buscar perfis de usuários para entender o contexto
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('display_name, email')
-      .limit(10);
-
-    if (profilesData?.length) {
-      context += `\nUsuários ativos no sistema: ${profilesData.length} perfis cadastrados\n`;
-    }
-
-    // Se temos contexto do usuário específico
-    if (userContext?.userId) {
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('display_name, email')
-        .eq('user_id', userContext.userId)
-        .single();
-
-      if (userProfile) {
-        context += `\nPerfil do usuário atual:\n`;
-        context += `- Nome: ${userProfile.display_name || 'Não informado'}\n`;
-        context += `- Email: ${userProfile.email || 'Não informado'}\n`;
-      }
-
-      // Buscar conversas anteriores do usuário
-      const { data: userConversations } = await supabase
-        .from('chat_conversations')
-        .select('category, sentiment, tags, total_messages')
-        .eq('session_id', userContext.userId)
-        .order('started_at', { ascending: false })
-        .limit(5);
-
-      if (userConversations?.length) {
-        context += `\nHistórico do usuário:\n`;
-        context += `- Conversas anteriores: ${userConversations.length}\n`;
-        context += `- Categorias principais: ${[...new Set(userConversations.map((c: any) => c.category))].join(', ')}\n`;
-      }
-    }
-
-  } catch (error) {
-    console.error('Error gathering database context:', error);
-    context += '\nNão foi possível acessar dados contextuais do sistema.';
+  // Executar profile fetch e financing context em paralelo
+  const promises: Promise<any>[] = [];
+  
+  // Profile name
+  if (userContext?.userId && prompt.includes('{{user_name}}')) {
+    promises.push(
+      supabase.from('profiles').select('display_name').eq('user_id', userContext.userId).single()
+        .then(({ data }: any) => ({ type: 'profile', name: data?.display_name || 'Usuário' }))
+    );
+  } else {
+    promises.push(Promise.resolve({ type: 'profile', name: 'Usuário' }));
   }
 
-  return context;
+  // Financing context (only if intent detected)
+  if (needsFinancing) {
+    promises.push(
+      getFinancingContext(supabase).then(ctx => ({ type: 'financing', ctx }))
+    );
+  }
+
+  const results = await Promise.all(promises);
+  
+  for (const result of results) {
+    if (result.type === 'profile') {
+      resolvedPrompt = resolvedPrompt.replace(/\{\{user_name\}\}/g, result.name);
+    }
+    if (result.type === 'financing' && result.ctx) {
+      resolvedPrompt += result.ctx;
+      console.log('Financing context injected into prompt');
+    }
+  }
+
+  return resolvedPrompt;
 }
 
-function buildSystemPrompt(userContext?: UserContext, dbContext?: string): string {
+function buildSystemPrompt(userContext?: UserContext): string {
   const basePrompt = `🎯 IDENTIDADE E PROPÓSITO
 
 Você é um assistente especializado em suporte técnico para os sistemas e procedimentos da empresa Apolar Imóveis:
@@ -834,103 +620,6 @@ NÃO resolver:
 Como escalar:
 "Identifiquei que seu caso precisa de atenção especializada. Por gentileza, siga com a abertura de um ticket por meio da plataforma Movidesk (https://apolarimoveis.movidesk.com/Account/Login), com a seguinte descrição: [resumo detalhado do problema]"
 
-📚 MANUAIS E PROCEDIMENTOS
-
-═══════════════════════════════════════════════════════
-📘 MANUAL APOLAR SALES (CRM) - VERSÃO 01
-═══════════════════════════════════════════════════════
-
-🔐 1. ACESSO INICIAL
-
-Para acessar o sistema Apolar Sales:
-
-**Passo 1: Acesso pelo Apolar NET**
-1. Entre no Apolar NET (sistema ERP)
-2. No menu lateral, localize e clique em "Apolar Sales"
-3. Você será redirecionado automaticamente
-
-**Passo 2: Primeiro acesso**
-1. Insira seu e-mail corporativo
-2. Clique em "Esqueci minha senha"
-3. Você receberá um e-mail com link para criar sua senha
-4. Defina uma senha forte (mínimo 8 caracteres)
-5. Faça login com suas credenciais
-
-👤 2. TIPOS DE ACESSO
-
-O sistema possui 4 níveis de acesso:
-
-**ADMINISTRADOR**
-- Acesso total ao sistema
-- Gerenciamento de usuários e permissões
-- Configurações globais
-- Relatórios completos
-
-**GERENTE**
-- Visualização de toda a equipe
-- Gestão de leads e oportunidades da área
-- Relatórios gerenciais
-- Aprovações de processos
-
-**CORRETOR**
-- Gestão de seus próprios leads
-- Registro de atendimentos
-- Acompanhamento de propostas
-- Acesso a informações de imóveis
-
-**VISUALIZADOR**
-- Apenas consulta
-- Sem permissão de edição
-- Acesso limitado a relatórios
-
-🔄 3. FUNCIONALIDADES PRINCIPAIS
-
-**Dashboard**
-- Visão geral de atividades
-- Métricas de desempenho
-- Tarefas pendentes
-- Alertas importantes
-
-**Leads**
-- Cadastro de novos leads
-- Qualificação e classificação
-- Histórico de interações
-- Distribuição automática
-
-**Oportunidades**
-- Pipeline de vendas
-- Acompanhamento de propostas
-- Previsão de fechamento
-- Relatórios de conversão
-
-**Imóveis**
-- Consulta de disponibilidade
-- Características e fotos
-- Valores e condições
-- Localização e entorno
-
-❓ 4. PROBLEMAS FREQUENTES
-
-**Problema: Não consigo fazer login**
-Solução:
-1. Verifique se está usando o e-mail corporativo correto
-2. Tente recuperar a senha clicando em "Esqueci minha senha"
-3. Limpe o cache do navegador
-4. Tente em outro navegador
-
-**Problema: Lead duplicado**
-Solução:
-1. Use a função de busca antes de cadastrar
-2. Verifique pelo CPF, telefone ou e-mail
-3. Se encontrar duplicata, solicite a mesclagem ao gestor
-
-**Problema: Relatório não carrega**
-Solução:
-1. Aguarde alguns segundos
-2. Reduza o período do relatório
-3. Limpe o cache do navegador
-4. Se persistir, abra ticket no suporte
-
 📞 CANAIS DE SUPORTE
 
 - **Chatbot AIA**: Para dúvidas rápidas e procedimentos
@@ -938,10 +627,6 @@ Solução:
 - **Gestor direto**: Para questões de permissões e acessos`;
 
   let fullPrompt = basePrompt;
-
-  if (dbContext) {
-    fullPrompt += `\n\n📊 CONTEXTO ATUAL DO SISTEMA\n${dbContext}`;
-  }
 
   if (userContext) {
     fullPrompt += `\n\n👤 INFORMAÇÕES DO USUÁRIO ATUAL`;
@@ -952,59 +637,4 @@ Solução:
   }
 
   return fullPrompt;
-}
-
-async function saveMessages(supabase: any, conversationId: string, userMessage: string, aiResponse: string) {
-  try {
-    // Buscar o último message_order da conversa
-    const { data: lastMessage, error: fetchError } = await supabase
-      .from('chat_messages')
-      .select('message_order')
-      .eq('conversation_id', conversationId)
-      .order('message_order', { ascending: false })
-      .limit(1)
-      .single();
-
-    let nextOrder = 1;
-    if (!fetchError && lastMessage) {
-      nextOrder = (lastMessage.message_order || 0) + 1;
-    }
-
-    // Inserir mensagem do usuário
-    const { error: userMsgError } = await supabase
-      .from('chat_messages')
-      .insert({
-        conversation_id: conversationId,
-        content: userMessage,
-        is_user: true,
-        message_order: nextOrder
-      });
-
-    if (userMsgError) {
-      console.error('Error saving user message:', userMsgError);
-    }
-
-    // Inserir resposta da IA
-    const { error: aiMsgError } = await supabase
-      .from('chat_messages')
-      .insert({
-        conversation_id: conversationId,
-        content: aiResponse,
-        is_user: false,
-        message_order: nextOrder + 1
-      });
-
-    if (aiMsgError) {
-      console.error('Error saving AI message:', aiMsgError);
-    }
-
-    // Atualizar contador de mensagens na conversa
-    await supabase
-      .from('chat_conversations')
-      .update({ total_messages: nextOrder + 1 })
-      .eq('id', conversationId);
-
-  } catch (error) {
-    console.error('Error in saveMessages:', error);
-  }
 }
