@@ -1,28 +1,32 @@
 
 
-# Tooltip de Dicas no Chat da AIA
+# Diagnostico: Mensagens nao estao sendo salvas
 
-## O que sera feito
+## Problema identificado
 
-Adicionar um icone de dica (lampada ou interrogacao) ao lado do campo de input do chat. Ao passar o mouse ou clicar, exibira um tooltip com as seguintes dicas:
+Analisei o banco de dados e encontrei que **todas as conversas apos 19/02 (8+ conversas) tem 0 mensagens**, enquanto conversas anteriores tem mensagens normalmente. O problema tem duas causas:
 
-**Dicas para melhores respostas:**
-- Faca uma pergunta por vez.
-- Use palavras-chave claras (ex: comissao, vistoria, contrato, proposta).
-- Seja especifico: informe o processo e o sistema envolvidos.
+### Causa 1: Falha silenciosa no salvamento de mensagens
 
-## Detalhes Tecnicos
+A funcao `saveMessage` usa `.insert().select('id').single()`. A politica de SELECT na tabela `chat_messages` **so permite admins**. Quando um usuario anonimo envia uma mensagem:
+- O INSERT e executado
+- O `.select('id').single()` falha porque o usuario nao tem permissao de SELECT
+- O PostgREST pode reverter a operacao nesse cenario, resultando em 0 mensagens salvas
+- A funcao retorna `null` silenciosamente
 
-### Arquivo a modificar
-- `src/components/chat/AIAssistantPanel.tsx`
+### Causa 2: Bug de duplicacao de conversas
 
-### Mudancas
-1. Importar os componentes `Tooltip`, `TooltipTrigger`, `TooltipContent` e `TooltipProvider` de `@/components/ui/tooltip`
-2. Importar o icone `Lightbulb` do `lucide-react`
-3. Adicionar um botao com icone de lampada ao lado do campo de texto (dentro da area de input, posicionado a esquerda do botao de enviar)
-4. O tooltip exibira o texto formatado com as 3 dicas usando bullet points
-5. O tooltip usara o componente Radix ja existente no projeto, mantendo consistencia visual
+Quando o usuario reinicia uma conversa apos encerramento (`conversationClosed = true`), o codigo cria uma conversa, atualiza o state React (assincrono), mas na sequencia le o state antigo (vazio), criando uma **segunda conversa**. A primeira fica com 0 mensagens.
 
-### Posicionamento
-O icone ficara dentro da barra de input (ao lado direito, antes do botao de enviar), mantendo o layout limpo e integrado ao design atual.
+## Correcoes
+
+### Arquivo: `src/components/chat/AIAssistantPanel.tsx`
+
+**Correcao 1 - `saveMessage`**: Gerar o UUID no cliente via `crypto.randomUUID()` e usar apenas `.insert()` sem `.select().single()`, eliminando a dependencia da politica de SELECT.
+
+**Correcao 2 - `handleSendMessage`**: No bloco `conversationClosed`, atribuir o novo ID diretamente a variavel local `currentConversationId` em vez de depender do state React assincrono, evitando a criacao duplicada.
+
+### Migracao SQL (opcional)
+
+Limpar conversas vazias com 0 mensagens que ficaram orfas no banco.
 
