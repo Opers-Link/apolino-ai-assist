@@ -154,16 +154,18 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     }
 
     try {
-      const { data, error } = await supabase
+      // Gerar UUID no cliente para evitar dependência da política de SELECT
+      const messageId = crypto.randomUUID();
+      
+      const { error } = await supabase
         .from('chat_messages')
         .insert({
+          id: messageId,
           conversation_id: targetConversationId,
           content,
           is_user: isUser,
           message_order: messageOrder
-        })
-        .select('id')
-        .single();
+        });
 
       if (error) {
         console.error('Erro ao inserir mensagem:', error);
@@ -178,7 +180,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
         })
         .eq('id', targetConversationId);
 
-      return data?.id ?? null;
+      return messageId;
     } catch (error) {
       console.error('Erro ao salvar mensagem:', error);
       return null;
@@ -427,6 +429,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || isCreatingConversation) return;
 
+    // Variável local para rastrear o ID da conversa (evita race condition com state assíncrono)
+    let currentConversationId = conversationId;
+
     // Se a conversa foi encerrada, iniciar uma nova
     if (conversationClosed) {
       setConversationClosed(false);
@@ -450,7 +455,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
         return;
       }
       
-      setConversationId(newConversationId);
+      currentConversationId = newConversationId;
     }
 
     if (messageCount >= MAX_MESSAGES) {
@@ -463,7 +468,6 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     }
 
     // Garantir que temos um conversationId válido
-    let currentConversationId = conversationId;
     
     if (!currentConversationId) {
       // Se não tem conversa ainda, criar uma agora (lazy loading)
