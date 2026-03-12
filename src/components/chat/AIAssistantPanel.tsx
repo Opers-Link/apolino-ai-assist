@@ -871,6 +871,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               <Ticket className="h-4 w-4" />
               Abrir ticket
             </Button>
+            {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
               variant="outline"
@@ -880,6 +881,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
               <Calculator className="h-4 w-4" />
               Simulador
             </Button>
+            */}
             <Button
               onClick={() => window.open('/faq', '_blank')}
               variant="outline"
