@@ -277,22 +277,6 @@ const FAQ = () => {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-8 bg-gradient-to-r from-apolar-blue/5 to-apolar-gold/5 rounded-2xl p-8 text-center border border-apolar-blue/10">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            Não encontrou o que procurava?
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Nossa assistente virtual AIA pode ajudar com dúvidas mais específicas
-          </p>
-          <Button 
-            onClick={() => window.history.back()}
-            className="gap-2 bg-apolar-blue hover:bg-apolar-blue/90"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Falar com a AIA
-          </Button>
-        </div>
       </main>
 
       {/* Footer */}
