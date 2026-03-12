@@ -267,6 +267,8 @@ const FAQ = () => {
                       ? "bg-blue-100 text-blue-700"
                       : item.status === "Em análise"
                       ? "bg-purple-100 text-purple-700"
+                      : item.status === "Atualizado"
+                      ? "bg-emerald-100 text-emerald-700"
                       : "bg-gray-100 text-gray-600"
                   }`}>
                     {item.status}
