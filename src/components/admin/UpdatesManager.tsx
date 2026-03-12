@@ -27,6 +27,7 @@ const STATUS_OPTIONS = [
   { value: 'Em desenvolvimento', label: 'Em desenvolvimento', color: 'bg-blue-100 text-blue-700' },
   { value: 'Planejado', label: 'Planejado', color: 'bg-gray-100 text-gray-600' },
   { value: 'Em análise', label: 'Em análise', color: 'bg-purple-100 text-purple-700' },
+  { value: 'Atualizado', label: 'Atualizado', color: 'bg-emerald-100 text-emerald-700' },
 ];
 
 export function UpdatesManager() {
