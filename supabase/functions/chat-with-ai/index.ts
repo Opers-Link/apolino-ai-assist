@@ -136,7 +136,7 @@ serve(async (req) => {
     const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
     
     // Executar rate limit, conversation check e busca de dados em paralelo
-    const [rateLimitResult, conversationCheck, promptData, modulesData, allModuleFiles, configData] = await Promise.all([
+    const [rateLimitResult, conversationCheck, promptData, modulesData, allModuleFiles, configData, refinementsData] = await Promise.all([
       // 1. Rate limit
       checkRateLimit(supabase, sessionId),
       // 2. Conversation check (se temos conversationId)
@@ -151,6 +151,8 @@ serve(async (req) => {
       supabase.from('knowledge_module_files').select('module_id, file_name, extracted_text').order('uploaded_at', { ascending: false }),
       // 6. Knowledge config
       supabase.from('knowledge_config').select('key, value'),
+      // 7. Refinamentos ativos
+      supabase.from('prompt_refinements').select('instruction, category, priority').eq('is_active', true).order('priority', { ascending: false }),
     ]);
 
     // Verificar rate limit
