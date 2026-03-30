@@ -22,6 +22,7 @@ interface AIAssistantPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isEmbedded?: boolean;
+  externalUserId?: string | null;
 }
 
 const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPanelProps) => {
