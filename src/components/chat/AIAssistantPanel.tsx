@@ -25,7 +25,7 @@ interface AIAssistantPanelProps {
   externalUserId?: string | null;
 }
 
-const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPanelProps) => {
+const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId }: AIAssistantPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
