@@ -53,7 +53,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     if (isOpen) {
       recoverExistingConversation();
     }
-  }, [isOpen]);
+  }, [isOpen, externalUserId]);
 
   const recoverExistingConversation = async () => {
     try {
