@@ -528,6 +528,39 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_refinements: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          instruction: string
+          is_active: boolean
+          module_hint: string | null
+          priority: number
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instruction: string
+          is_active?: boolean
+          module_hint?: string | null
+          priority?: number
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instruction?: string
+          is_active?: boolean
+          module_hint?: string | null
+          priority?: number
+        }
+        Relationships: []
+      }
       system_prompts: {
         Row: {
           content: string

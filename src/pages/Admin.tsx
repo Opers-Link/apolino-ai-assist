@@ -15,6 +15,7 @@ import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Set
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PromptEditor } from '@/components/admin/PromptEditor';
 import { KnowledgeModulesManager } from '@/components/admin/KnowledgeModulesManager';
+import { RefinementsManager } from '@/components/admin/RefinementsManager';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -994,10 +995,14 @@ const Admin = () => {
         </CardHeader>
         <CardContent className="relative pt-0">
           <Tabs defaultValue="prompt" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-slate-100/80">
+            <TabsList className="grid w-full grid-cols-5 bg-slate-100/80">
               <TabsTrigger value="prompt" className="data-[state=active]:bg-white data-[state=active]:text-apolar-gold-alt">
                 <Sparkles className="h-4 w-4 mr-2" />
                 Prompt da IA
+              </TabsTrigger>
+              <TabsTrigger value="refinements" className="data-[state=active]:bg-white data-[state=active]:text-apolar-gold-alt">
+                <Zap className="h-4 w-4 mr-2" />
+                Refinamentos
               </TabsTrigger>
               <TabsTrigger value="manuals" className="data-[state=active]:bg-white data-[state=active]:text-apolar-gold-alt">
                 <BookOpen className="h-4 w-4 mr-2" />
@@ -1015,6 +1020,10 @@ const Admin = () => {
 
             <TabsContent value="prompt" className="mt-6">
               <PromptEditor />
+            </TabsContent>
+
+            <TabsContent value="refinements" className="mt-6">
+              <RefinementsManager />
             </TabsContent>
 
             <TabsContent value="manuals" className="mt-6">
