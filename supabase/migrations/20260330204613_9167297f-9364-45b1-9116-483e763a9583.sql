@@ -1,0 +1,2 @@
+ALTER TABLE public.chat_conversations ADD COLUMN external_user_id TEXT;
+CREATE INDEX idx_chat_conversations_external_user_id ON public.chat_conversations(external_user_id) WHERE external_user_id IS NOT NULL;

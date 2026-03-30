@@ -22,9 +22,10 @@ interface AIAssistantPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isEmbedded?: boolean;
+  externalUserId?: string | null;
 }
 
-const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPanelProps) => {
+const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId }: AIAssistantPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,15 +53,35 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     if (isOpen) {
       recoverExistingConversation();
     }
-  }, [isOpen]);
+  }, [isOpen, externalUserId]);
 
   const recoverExistingConversation = async () => {
     try {
-      // Tentar recuperar conversa ativa do localStorage
+      // Se temos um externalUserId, buscar conversa ativa por ele (prioridade)
+      if (externalUserId) {
+        const { data: externalConversation, error: extError } = await supabase
+          .from('chat_conversations')
+          .select('id, session_id, status, ai_enabled')
+          .eq('external_user_id', externalUserId)
+          .in('status', ['active', 'needs_help', 'in_progress'])
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!extError && externalConversation) {
+          setConversationId(externalConversation.id);
+          setSessionId(externalConversation.session_id);
+          setAiDisabled(externalConversation.ai_enabled === false || externalConversation.status === 'in_progress');
+          localStorage.setItem('aia_conversation_id', externalConversation.id);
+          await loadExistingMessages(externalConversation.id);
+          return;
+        }
+      }
+
+      // Fallback: tentar recuperar conversa ativa do localStorage
       const storedConversationId = localStorage.getItem('aia_conversation_id');
       
       if (storedConversationId) {
-        // Verificar se a conversa ainda está ativa
         const { data: existingConversation, error } = await supabase
           .from('chat_conversations')
           .select('id, session_id, status, ai_enabled')
@@ -72,17 +93,12 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
           setConversationId(existingConversation.id);
           setSessionId(existingConversation.session_id);
           setAiDisabled(existingConversation.ai_enabled === false || existingConversation.status === 'in_progress');
-          
-          // Recuperar mensagens existentes
           await loadExistingMessages(existingConversation.id);
           return;
         } else {
-          // Conversa não existe mais ou está fechada, limpar localStorage
           localStorage.removeItem('aia_conversation_id');
         }
       }
-      
-      // Não cria conversa automaticamente - será criada no primeiro envio de mensagem
     } catch (error) {
       console.error('Erro ao recuperar conversa:', error);
     }
@@ -117,14 +133,21 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false }: AIAssistantPa
     try {
       const userAgent = navigator.userAgent;
       
+      const insertData: any = {
+        session_id: sid,
+        user_agent: userAgent,
+        status: 'active',
+        total_messages: 0,
+      };
+      
+      // Vincular ao usuário externo se disponível
+      if (externalUserId) {
+        insertData.external_user_id = externalUserId;
+      }
+
       const { data, error } = await supabase
         .from('chat_conversations')
-        .insert({
-          session_id: sid,
-          user_agent: userAgent,
-          status: 'active',
-          total_messages: 0
-        })
+        .insert(insertData)
         .select()
         .single();
 

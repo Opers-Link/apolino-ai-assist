@@ -124,6 +124,7 @@ export type Database = {
           assigned_to: string | null
           category: Database["public"]["Enums"]["conversation_category"] | null
           ended_at: string | null
+          external_user_id: string | null
           first_response_time: number | null
           human_requested_at: string | null
           id: string
@@ -147,6 +148,7 @@ export type Database = {
           assigned_to?: string | null
           category?: Database["public"]["Enums"]["conversation_category"] | null
           ended_at?: string | null
+          external_user_id?: string | null
           first_response_time?: number | null
           human_requested_at?: string | null
           id?: string
@@ -170,6 +172,7 @@ export type Database = {
           assigned_to?: string | null
           category?: Database["public"]["Enums"]["conversation_category"] | null
           ended_at?: string | null
+          external_user_id?: string | null
           first_response_time?: number | null
           human_requested_at?: string | null
           id?: string
