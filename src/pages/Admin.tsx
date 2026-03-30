@@ -15,6 +15,7 @@ import { MessageSquare, Users, TrendingUp, Clock, Tag, PieChart, UserCircle, Set
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PromptEditor } from '@/components/admin/PromptEditor';
 import { KnowledgeModulesManager } from '@/components/admin/KnowledgeModulesManager';
+import { RefinementsManager } from '@/components/admin/RefinementsManager';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
