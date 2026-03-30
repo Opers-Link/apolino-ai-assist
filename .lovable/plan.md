@@ -1,50 +1,73 @@
 
 
-# Histórico de Chat por Usuário Externo
+# Instruções de Refinamento em Tempo Real (Correction Layer)
 
-## Situação Atual
-Hoje, o chat widget usa `localStorage` para recuperar a conversa ativa. O `session_id` é gerado aleatoriamente (`session_${Date.now()}_random`). Isso significa que se o usuário limpar o cache ou trocar de navegador, perde o histórico. Não há vínculo com o usuário do sistema externo.
+## Conceito
 
-## Solução Proposta
+Criar uma camada de **"Instruções de Refinamento"** separada do prompt mestre. Funciona como uma lista de correções e instruções específicas que são injetadas automaticamente no contexto da IA, sem poluir o prompt base.
 
-Usar **postMessage** (comunicação iframe ↔ sistema pai) para que o sistema externo envie um identificador do usuário ao chat widget. Com esse ID, o chat pode recuperar conversas anteriores daquele usuário.
+**Analogia**: O prompt mestre é a "constituição" da AIA. As instruções de refinamento são "portarias e decretos" — regras específicas que complementam sem alterar a base.
 
-### Fluxo
+## Como funciona
+
+O admin identifica uma resposta errada no chat → abre o painel de refinamentos → adiciona uma instrução como:
+
+> "Quando perguntarem sobre rescisão de contrato de locação, o prazo correto é 30 dias de aviso prévio, NÃO 90 dias como consta no manual v2.1"
+
+Essa instrução é salva no banco e automaticamente incluída no contexto da IA em todas as conversas seguintes.
+
+## Implementação
+
+### 1. Nova tabela `prompt_refinements`
 
 ```text
-Sistema Externo (pai)              Chat Widget (iframe)
-    │                                    │
-    │── postMessage({ externalUserId })──▶│
-    │                                    │ Salva externalUserId no state
-    │                                    │ Busca conversa ativa com esse userId
-    │                                    │ Se não encontrar, cria nova no 1º envio
-    │                                    │
-    │◀── postMessage({ conversationId })──│ (opcional, retorno do ID)
+id              UUID (PK)
+instruction     TEXT       -- a instrução/correção
+category        TEXT       -- opcional: "correção", "complemento", "restrição"
+is_active       BOOLEAN    -- ativar/desativar sem deletar
+priority        INTEGER    -- ordem de importância
+created_by      UUID
+created_at      TIMESTAMP
+module_hint     TEXT       -- opcional: associar a um módulo específico
 ```
 
-### Mudanças
+### 2. Novo componente `RefinementsManager`
 
-#### 1. Banco de dados — nova coluna `external_user_id`
-- Adicionar coluna `external_user_id TEXT` na tabela `chat_conversations`
-- Criar índice para busca rápida por `external_user_id`
+No painel admin (dentro de Configurações), uma nova aba "Refinamentos" ao lado do editor de prompt. Interface simples:
+- Lista de instruções ativas com toggle on/off
+- Botão "Adicionar refinamento" com campo de texto
+- Campo opcional de categoria e módulo associado
+- Contador de instruções ativas
 
-#### 2. `src/pages/ChatWidget.tsx`
-- Aceitar parâmetros via **URL query string** (`?userId=xxx`) e/ou **postMessage**
-- Passar o `externalUserId` como prop para `AIAssistantPanel`
+### 3. Edge Function `chat-with-ai` — injetar refinamentos
 
-#### 3. `src/components/chat/AIAssistantPanel.tsx`
-- Receber prop `externalUserId?: string`
-- Na recuperação de conversa (`recoverExistingConversation`): se `externalUserId` existir, buscar conversa ativa pelo `external_user_id` no banco (em vez de depender apenas do `localStorage`)
-- Na criação de conversa (`createConversation`): salvar `external_user_id` junto com os dados
-- Manter fallback para `localStorage` quando não houver `externalUserId`
+Na montagem do prompt, após o master prompt e antes dos módulos de conhecimento, inserir um bloco:
 
-#### 4. Integração no sistema externo (instruções para o cliente)
-O sistema externo precisa passar o ID do usuário ao iframe de duas formas possíveis:
-- **Query string** (mais simples): `<iframe src="https://aia-apolar-assist.lovable.app/chat-widget?userId=USER_123">`
-- **postMessage** (mais seguro/dinâmico): `iframe.contentWindow.postMessage({ type: 'SET_USER_ID', userId: 'USER_123' }, '*')`
+```text
+📌 INSTRUÇÕES DE REFINAMENTO (prioridade alta):
+- [instrução 1]
+- [instrução 2]
+...
+```
 
-### Resultado
-- Usuário abre o chat → widget recebe o `userId` → busca conversas ativas desse usuário → exibe histórico
-- Se não houver conversa ativa, cria uma nova vinculada ao `userId`
-- Ao retornar, o usuário vê suas conversas anteriores (enquanto estiverem ativas/não expiradas)
+Essas instruções são carregadas em paralelo com as outras queries (adicionando à Promise.all existente).
+
+### 4. Atalho desde o painel de conversas (opcional)
+
+Ao visualizar uma conversa no admin e identificar uma resposta errada, botão "Criar refinamento" que pré-preenche o contexto da pergunta/resposta problemática.
+
+## Arquivos afetados
+
+- **Nova migração SQL** — tabela `prompt_refinements` + RLS
+- **Novo componente** `src/components/admin/RefinementsManager.tsx`
+- **`src/pages/Admin.tsx`** — adicionar aba/seção de Refinamentos nas Configurações
+- **`supabase/functions/chat-with-ai/index.ts`** — query + injeção no prompt
+
+## Vantagens desta abordagem
+
+- Prompt mestre fica limpo e estável
+- Refinamentos podem ser ativados/desativados individualmente
+- Histórico de todas as correções feitas
+- Fácil de testar: ativa, testa no chat, desativa se não funcionar
+- Escala bem: dezenas de refinamentos sem impactar a legibilidade do prompt
 
