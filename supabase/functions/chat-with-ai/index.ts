@@ -219,6 +219,15 @@ serve(async (req) => {
       supabase
     );
 
+    // Injetar refinamentos ativos no prompt
+    const activeRefinements = refinementsData.data || [];
+    let finalSystemPrompt = systemPrompt;
+    if (activeRefinements.length > 0) {
+      const refinementsBlock = `\n\n📌 INSTRUÇÕES DE REFINAMENTO (prioridade alta — seguir rigorosamente):\n${activeRefinements.map((r: any) => `- [${r.category?.toUpperCase() || 'GERAL'}] ${r.instruction}`).join('\n')}\n`;
+      finalSystemPrompt = systemPrompt + refinementsBlock;
+      console.log(`Injected ${activeRefinements.length} refinement instructions`);
+    }
+
     // Buscar profile name em paralelo com o financing context (se necessário)
     const needsFinancing = hasFinancingIntent(lastUserMessage);
     const [resolvedPrompt] = await Promise.all([
