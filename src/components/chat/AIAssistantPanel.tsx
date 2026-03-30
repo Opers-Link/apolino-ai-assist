@@ -133,14 +133,21 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     try {
       const userAgent = navigator.userAgent;
       
+      const insertData: any = {
+        session_id: sid,
+        user_agent: userAgent,
+        status: 'active',
+        total_messages: 0,
+      };
+      
+      // Vincular ao usuário externo se disponível
+      if (externalUserId) {
+        insertData.external_user_id = externalUserId;
+      }
+
       const { data, error } = await supabase
         .from('chat_conversations')
-        .insert({
-          session_id: sid,
-          user_agent: userAgent,
-          status: 'active',
-          total_messages: 0
-        })
+        .insert(insertData)
         .select()
         .single();
 
