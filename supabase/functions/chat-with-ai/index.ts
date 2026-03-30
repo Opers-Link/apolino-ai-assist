@@ -231,7 +231,7 @@ serve(async (req) => {
     // Buscar profile name em paralelo com o financing context (se necessário)
     const needsFinancing = hasFinancingIntent(lastUserMessage);
     const [resolvedPrompt] = await Promise.all([
-      resolvePromptAsync(systemPrompt, userContext, supabase, needsFinancing),
+      resolvePromptAsync(finalSystemPrompt, userContext, supabase, needsFinancing),
     ]);
 
     const fullMessages = [
