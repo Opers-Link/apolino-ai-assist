@@ -252,6 +252,7 @@ serve(async (req) => {
         model: AI_MODEL,
         messages: fullMessages,
         stream: true,
+        stream_options: { include_usage: true },
         temperature: 0.7,
         max_tokens: 1500,
       }),
@@ -275,20 +276,62 @@ serve(async (req) => {
       throw new Error(`Lovable AI API error: ${errorText}`);
     }
 
-    // Log de uso (fire-and-forget, não bloqueia a resposta)
-    supabase.from('ai_usage_logs').insert({
-      conversation_id: conversationId || null,
-      session_id: sessionId,
-      model: AI_MODEL,
-      has_knowledge_modules: modulesUsed.length > 0,
-      success: true
-    }).then(({ error: logError }: any) => {
-      if (logError) console.error('Erro ao registrar uso de IA:', logError);
-    });
-
     console.log(`Modules loaded: ${classificationMethod === 'none' ? 'NONE (GPT knowledge only)' : modulesUsed.join(', ')} (method: ${classificationMethod})`);
 
-    return new Response(response.body, {
+    // Intercept stream to extract usage data from the final chunk
+    const reader = response.body!.getReader();
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    
+    let usageData: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null = null;
+
+    const transformedStream = new ReadableStream({
+      async pull(controller) {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          
+          // Log usage after stream completes (fire-and-forget)
+          supabase.from('ai_usage_logs').insert({
+            conversation_id: conversationId || null,
+            session_id: sessionId,
+            model: AI_MODEL,
+            has_knowledge_modules: modulesUsed.length > 0,
+            success: true,
+            prompt_tokens: usageData?.prompt_tokens || null,
+            completion_tokens: usageData?.completion_tokens || null,
+            total_tokens: usageData?.total_tokens || null,
+          }).then(({ error: logError }: any) => {
+            if (logError) console.error('Erro ao registrar uso de IA:', logError);
+            else if (usageData) console.log(`Token usage logged: prompt=${usageData.prompt_tokens}, completion=${usageData.completion_tokens}, total=${usageData.total_tokens}`);
+          });
+          
+          return;
+        }
+        
+        // Parse chunks to find usage data in the final SSE event
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line.trim() !== 'data: [DONE]') {
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              if (parsed.usage) {
+                usageData = parsed.usage;
+              }
+            } catch { /* partial JSON, ignore */ }
+          }
+        }
+        
+        // Forward the chunk as-is to the client
+        controller.enqueue(value);
+      },
+      cancel() {
+        reader.cancel();
+      }
+    });
+
+    return new Response(transformedStream, {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
     });
 
