@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -228,6 +229,30 @@ export const KnowledgeModulesManager: React.FC = () => {
     }
   };
 
+  const getFileKind = (file: File): 'pdf' | 'csv' | 'xlsx' | null => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.pdf') || file.type === 'application/pdf') return 'pdf';
+    if (name.endsWith('.csv') || file.type === 'text/csv') return 'csv';
+    if (name.endsWith('.xlsx') || name.endsWith('.xls')) return 'xlsx';
+    return null;
+  };
+
+  const extractSpreadsheetText = async (file: File, kind: 'csv' | 'xlsx'): Promise<string> => {
+    if (kind === 'csv') {
+      const text = await file.text();
+      return `=== ARQUIVO CSV: ${file.name} ===\n\n${text}`;
+    }
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const parts: string[] = [`=== ARQUIVO XLSX: ${file.name} ===`];
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+      parts.push(`\n--- Planilha: ${sheetName} ---\n${csv}`);
+    }
+    return parts.join('\n');
+  };
+
   const handleFileUpload = async (moduleId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -238,10 +263,11 @@ export const KnowledgeModulesManager: React.FC = () => {
       if (!module) return;
 
       for (const file of Array.from(files)) {
-        if (file.type !== 'application/pdf') {
+        const kind = getFileKind(file);
+        if (!kind) {
           toast({
             title: 'Arquivo inválido',
-            description: 'Apenas arquivos PDF são permitidos',
+            description: 'Formatos aceitos: PDF, CSV, XLSX, XLS',
             variant: 'destructive',
           });
           continue;
@@ -249,8 +275,8 @@ export const KnowledgeModulesManager: React.FC = () => {
 
         const sanitizedName = sanitizeFileName(file.name);
         const fileName = `${module.variable_name}/${Date.now()}_${sanitizedName}`;
-        
-        // Upload to storage using resumable upload for large files
+
+        // Upload to storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('manuals')
           .upload(fileName, file, {
@@ -264,27 +290,38 @@ export const KnowledgeModulesManager: React.FC = () => {
           throw new Error(`Erro no upload: ${uploadError.message}`);
         }
 
-        // Save file reference in database with sanitized name
-        const { error: dbError } = await supabase
+        // For CSV/XLSX, extract text in the browser before insert
+        let extractedText: string | null = null;
+        if (kind === 'csv' || kind === 'xlsx') {
+          try {
+            extractedText = await extractSpreadsheetText(file, kind);
+          } catch (err) {
+            console.error('Erro ao extrair planilha:', err);
+            toast({
+              title: 'Aviso',
+              description: `Não foi possível extrair o conteúdo de "${file.name}"`,
+              variant: 'destructive',
+            });
+          }
+        }
+
+        // Save file reference
+        const { data: insertedFile, error: dbError } = await supabase
           .from('knowledge_module_files')
           .insert({
             module_id: moduleId,
             file_name: sanitizedName,
             file_path: uploadData.path,
             file_size: file.size,
-          });
+            extracted_text: extractedText,
+          })
+          .select('id')
+          .single();
 
         if (dbError) throw dbError;
 
-        // Get the file ID we just inserted
-        const { data: insertedFile } = await supabase
-          .from('knowledge_module_files')
-          .select('id')
-          .eq('file_path', uploadData.path)
-          .single();
-
-        // Trigger PDF text extraction in background
-        if (insertedFile?.id) {
+        // Trigger PDF text extraction in background for PDFs only
+        if (kind === 'pdf' && insertedFile?.id) {
           console.log('Triggering PDF text extraction for file:', insertedFile.id);
           supabase.functions.invoke('extract-pdf-text', {
             body: { filePath: uploadData.path, fileId: insertedFile.id }
@@ -301,7 +338,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                 title: 'Texto extraído',
                 description: 'O conteúdo do PDF foi processado pela IA',
               });
-              loadData(); // Reload to show extraction status
+              loadData();
             }
           });
         }
@@ -309,7 +346,7 @@ export const KnowledgeModulesManager: React.FC = () => {
 
       toast({
         title: 'Upload concluído',
-        description: 'Os arquivos foram enviados. Aguarde a extração do texto...',
+        description: 'Os arquivos foram enviados com sucesso',
       });
 
       loadData();
@@ -325,6 +362,7 @@ export const KnowledgeModulesManager: React.FC = () => {
       setUploading(null);
     }
   };
+
 
   const deleteFile = async (fileId: string, filePath: string) => {
     try {
@@ -662,14 +700,15 @@ export const KnowledgeModulesManager: React.FC = () => {
                           {module.files && module.files.length > 0 ? (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                               <CheckCircle className="h-3 w-3 mr-1" />
-                              {module.files.length} PDF(s)
+                              {module.files.length} arquivo(s)
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                               <AlertCircle className="h-3 w-3 mr-1" />
-                              Sem PDF
+                              Sem arquivos
                             </Badge>
                           )}
+
                         </CardTitle>
                         <CardDescription className="mt-1">
                           Variável: <code className="bg-slate-100 px-2 py-0.5 rounded text-apolar-blue">{`{{${module.variable_name}}}`}</code>
@@ -728,13 +767,13 @@ export const KnowledgeModulesManager: React.FC = () => {
                     </Button>
                   </div>
 
-                  {/* Upload de PDF */}
+                  {/* Upload de arquivos */}
                   <div className="space-y-2">
-                    <Label className="text-sm">PDFs Anexados:</Label>
+                    <Label className="text-sm">Arquivos Anexados (PDF, CSV, XLSX):</Label>
                     <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 hover:border-apolar-gold/50 transition-colors">
                       <input
                         type="file"
-                        accept=".pdf"
+                        accept=".pdf,.csv,.xlsx,.xls"
                         multiple
                         id={`file-upload-${module.id}`}
                         className="hidden"
@@ -749,12 +788,13 @@ export const KnowledgeModulesManager: React.FC = () => {
                         ) : (
                           <>
                             <FileUp className="h-8 w-8 text-slate-400 mb-2" />
-                            <span className="text-sm text-slate-600">Clique para fazer upload de PDFs</span>
-                            <span className="text-xs text-slate-400 mt-1">ou arraste e solte aqui</span>
+                            <span className="text-sm text-slate-600">Clique para fazer upload</span>
+                            <span className="text-xs text-slate-400 mt-1">PDF, CSV ou XLSX</span>
                           </>
                         )}
                       </label>
                     </div>
+
 
                     {/* Lista de arquivos */}
                     {module.files && module.files.length > 0 && (
@@ -783,7 +823,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                               )}
                             </div>
                             <div className="flex items-center gap-1">
-                              {!file.extracted_text && (
+                              {!file.extracted_text && file.file_name.toLowerCase().endsWith('.pdf') && (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -799,6 +839,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                                   )}
                                 </Button>
                               )}
+
                               <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
