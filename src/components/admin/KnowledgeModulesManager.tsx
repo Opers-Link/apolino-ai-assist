@@ -229,6 +229,30 @@ export const KnowledgeModulesManager: React.FC = () => {
     }
   };
 
+  const getFileKind = (file: File): 'pdf' | 'csv' | 'xlsx' | null => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.pdf') || file.type === 'application/pdf') return 'pdf';
+    if (name.endsWith('.csv') || file.type === 'text/csv') return 'csv';
+    if (name.endsWith('.xlsx') || name.endsWith('.xls')) return 'xlsx';
+    return null;
+  };
+
+  const extractSpreadsheetText = async (file: File, kind: 'csv' | 'xlsx'): Promise<string> => {
+    if (kind === 'csv') {
+      const text = await file.text();
+      return `=== ARQUIVO CSV: ${file.name} ===\n\n${text}`;
+    }
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const parts: string[] = [`=== ARQUIVO XLSX: ${file.name} ===`];
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+      parts.push(`\n--- Planilha: ${sheetName} ---\n${csv}`);
+    }
+    return parts.join('\n');
+  };
+
   const handleFileUpload = async (moduleId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -239,10 +263,11 @@ export const KnowledgeModulesManager: React.FC = () => {
       if (!module) return;
 
       for (const file of Array.from(files)) {
-        if (file.type !== 'application/pdf') {
+        const kind = getFileKind(file);
+        if (!kind) {
           toast({
             title: 'Arquivo inválido',
-            description: 'Apenas arquivos PDF são permitidos',
+            description: 'Formatos aceitos: PDF, CSV, XLSX, XLS',
             variant: 'destructive',
           });
           continue;
@@ -250,8 +275,8 @@ export const KnowledgeModulesManager: React.FC = () => {
 
         const sanitizedName = sanitizeFileName(file.name);
         const fileName = `${module.variable_name}/${Date.now()}_${sanitizedName}`;
-        
-        // Upload to storage using resumable upload for large files
+
+        // Upload to storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('manuals')
           .upload(fileName, file, {
@@ -265,27 +290,38 @@ export const KnowledgeModulesManager: React.FC = () => {
           throw new Error(`Erro no upload: ${uploadError.message}`);
         }
 
-        // Save file reference in database with sanitized name
-        const { error: dbError } = await supabase
+        // For CSV/XLSX, extract text in the browser before insert
+        let extractedText: string | null = null;
+        if (kind === 'csv' || kind === 'xlsx') {
+          try {
+            extractedText = await extractSpreadsheetText(file, kind);
+          } catch (err) {
+            console.error('Erro ao extrair planilha:', err);
+            toast({
+              title: 'Aviso',
+              description: `Não foi possível extrair o conteúdo de "${file.name}"`,
+              variant: 'destructive',
+            });
+          }
+        }
+
+        // Save file reference
+        const { data: insertedFile, error: dbError } = await supabase
           .from('knowledge_module_files')
           .insert({
             module_id: moduleId,
             file_name: sanitizedName,
             file_path: uploadData.path,
             file_size: file.size,
-          });
+            extracted_text: extractedText,
+          })
+          .select('id')
+          .single();
 
         if (dbError) throw dbError;
 
-        // Get the file ID we just inserted
-        const { data: insertedFile } = await supabase
-          .from('knowledge_module_files')
-          .select('id')
-          .eq('file_path', uploadData.path)
-          .single();
-
-        // Trigger PDF text extraction in background
-        if (insertedFile?.id) {
+        // Trigger PDF text extraction in background for PDFs only
+        if (kind === 'pdf' && insertedFile?.id) {
           console.log('Triggering PDF text extraction for file:', insertedFile.id);
           supabase.functions.invoke('extract-pdf-text', {
             body: { filePath: uploadData.path, fileId: insertedFile.id }
@@ -302,7 +338,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                 title: 'Texto extraído',
                 description: 'O conteúdo do PDF foi processado pela IA',
               });
-              loadData(); // Reload to show extraction status
+              loadData();
             }
           });
         }
@@ -310,7 +346,7 @@ export const KnowledgeModulesManager: React.FC = () => {
 
       toast({
         title: 'Upload concluído',
-        description: 'Os arquivos foram enviados. Aguarde a extração do texto...',
+        description: 'Os arquivos foram enviados com sucesso',
       });
 
       loadData();
@@ -326,6 +362,7 @@ export const KnowledgeModulesManager: React.FC = () => {
       setUploading(null);
     }
   };
+
 
   const deleteFile = async (fileId: string, filePath: string) => {
     try {
