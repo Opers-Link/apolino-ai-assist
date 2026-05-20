@@ -700,14 +700,15 @@ export const KnowledgeModulesManager: React.FC = () => {
                           {module.files && module.files.length > 0 ? (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                               <CheckCircle className="h-3 w-3 mr-1" />
-                              {module.files.length} PDF(s)
+                              {module.files.length} arquivo(s)
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                               <AlertCircle className="h-3 w-3 mr-1" />
-                              Sem PDF
+                              Sem arquivos
                             </Badge>
                           )}
+
                         </CardTitle>
                         <CardDescription className="mt-1">
                           Variável: <code className="bg-slate-100 px-2 py-0.5 rounded text-apolar-blue">{`{{${module.variable_name}}}`}</code>
