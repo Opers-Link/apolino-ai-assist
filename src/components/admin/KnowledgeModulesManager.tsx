@@ -767,13 +767,13 @@ export const KnowledgeModulesManager: React.FC = () => {
                     </Button>
                   </div>
 
-                  {/* Upload de PDF */}
+                  {/* Upload de arquivos */}
                   <div className="space-y-2">
-                    <Label className="text-sm">PDFs Anexados:</Label>
+                    <Label className="text-sm">Arquivos Anexados (PDF, CSV, XLSX):</Label>
                     <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 hover:border-apolar-gold/50 transition-colors">
                       <input
                         type="file"
-                        accept=".pdf"
+                        accept=".pdf,.csv,.xlsx,.xls"
                         multiple
                         id={`file-upload-${module.id}`}
                         className="hidden"
@@ -788,12 +788,13 @@ export const KnowledgeModulesManager: React.FC = () => {
                         ) : (
                           <>
                             <FileUp className="h-8 w-8 text-slate-400 mb-2" />
-                            <span className="text-sm text-slate-600">Clique para fazer upload de PDFs</span>
-                            <span className="text-xs text-slate-400 mt-1">ou arraste e solte aqui</span>
+                            <span className="text-sm text-slate-600">Clique para fazer upload</span>
+                            <span className="text-xs text-slate-400 mt-1">PDF, CSV ou XLSX</span>
                           </>
                         )}
                       </label>
                     </div>
+
 
                     {/* Lista de arquivos */}
                     {module.files && module.files.length > 0 && (
