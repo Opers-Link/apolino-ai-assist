@@ -823,7 +823,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                               )}
                             </div>
                             <div className="flex items-center gap-1">
-                              {!file.extracted_text && (
+                              {!file.extracted_text && file.file_name.toLowerCase().endsWith('.pdf') && (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -839,6 +839,7 @@ export const KnowledgeModulesManager: React.FC = () => {
                                   )}
                                 </Button>
                               )}
+
                               <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500">
