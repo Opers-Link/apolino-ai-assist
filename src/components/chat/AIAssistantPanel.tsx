@@ -905,6 +905,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               Simulador
             </Button>
             */}
+            {/* FAQ temporariamente oculto
             <Button
               onClick={() => window.open('/faq', '_blank')}
               variant="outline"
@@ -914,6 +915,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               <HelpCircle className="h-4 w-4" />
               FAQ
             </Button>
+            */}
           </div>
           
           <p className="text-[10px] text-gray-400 text-center mt-3">
