@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle, Calculator, Lightbulb } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, Calculator, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -905,6 +905,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               Simulador
             </Button>
             */}
+            {/* FAQ temporariamente oculto
             <Button
               onClick={() => window.open('/faq', '_blank')}
               variant="outline"
@@ -914,6 +915,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               <HelpCircle className="h-4 w-4" />
               FAQ
             </Button>
+            */}
           </div>
           
           <p className="text-[10px] text-gray-400 text-center mt-3">
