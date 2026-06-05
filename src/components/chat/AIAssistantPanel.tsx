@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, HelpCircle, Calculator, Lightbulb } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, Calculator, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
