@@ -920,9 +920,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               </TooltipProvider>
               <Button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading || isCreatingConversation}
+                disabled={!inputValue.trim() || isLoading || isCreatingConversation || sendingRefinement}
                 size="icon"
-                className="h-8 w-8 rounded-full bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white transition-colors disabled:opacity-40"
+                className={cn(
+                  "h-8 w-8 rounded-full transition-colors disabled:opacity-40",
+                  refinementMode
+                    ? "bg-apolar-gold text-apolar-blue hover:bg-apolar-gold/90"
+                    : "bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white"
+                )}
+
               >
                 <Send className="h-4 w-4" />
               </Button>
