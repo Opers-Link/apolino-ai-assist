@@ -53,16 +53,16 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     window.open(MOVIDESK_URL, '_blank');
   };
 
-  const handleSubmitRefinement = async () => {
-    const text = refinementText.trim();
+  const handleSubmitRefinement = async (text: string) => {
     if (text.length < 5) {
       toast({ title: 'Descrição muito curta', description: 'Descreva o ajuste com pelo menos 5 caracteres.', variant: 'destructive' });
-      return;
+      return false;
     }
     setSendingRefinement(true);
     try {
-      // Contexto: últimas 2 mensagens
-      const lastMsgs = messages.slice(-2).map(m => `${m.isUser ? 'Usuário' : 'AIA'}: ${m.content}`).join('\n');
+      // Contexto: últimas 2 mensagens (ignora balões de sistema)
+      const lastMsgs = messages.filter(m => !m.isSystem).slice(-2)
+        .map(m => `${m.isUser ? 'Usuário' : 'AIA'}: ${m.content}`).join('\n');
       const { error } = await supabase.from('user_refinement_suggestions').insert({
         suggestion: text,
         context: lastMsgs || null,
@@ -70,16 +70,47 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
         external_user_id: externalUserId || null,
       });
       if (error) throw error;
-      toast({ title: 'Sugestão enviada', description: 'Obrigado! Um administrador irá revisar sua sugestão.' });
-      setRefinementText('');
-      setRefinementOpen(false);
+      return true;
     } catch (err) {
       console.error('Erro ao enviar refinamento:', err);
       toast({ title: 'Erro', description: 'Não foi possível enviar sua sugestão.', variant: 'destructive' });
+      return false;
     } finally {
       setSendingRefinement(false);
     }
   };
+
+  const toggleRefinementMode = () => {
+    setRefinementMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            id: `sys_${Date.now()}`,
+            content: 'Modo refinamento ativado. Descreva o ajuste que a AIA deveria fazer na última resposta. Sua próxima mensagem será enviada para revisão de um administrador — a IA não irá responder.',
+            isUser: false,
+            isSystem: true,
+            timestamp: new Date(),
+          },
+        ]);
+        setTimeout(() => textareaRef.current?.focus(), 50);
+      } else {
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            id: `sys_${Date.now()}`,
+            content: 'Modo refinamento cancelado.',
+            isUser: false,
+            isSystem: true,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      return next;
+    });
+  };
+
 
   // Recuperar conversa existente ao abrir o chat (sem criar nova)
   useEffect(() => {
