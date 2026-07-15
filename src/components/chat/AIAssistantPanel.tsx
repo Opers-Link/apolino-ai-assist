@@ -925,10 +925,10 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
       </div>
 
       <Dialog open={refinementOpen} onOpenChange={setRefinementOpen}>
-        <DialogContent className="sm:max-w-md relative overflow-visible rounded-3xl border-apolar-gold/40 bg-gradient-to-br from-white via-apolar-gold/5 to-apolar-gold/10 shadow-[0_8px_32px_-8px_rgba(255,204,0,0.35)]">
+        <DialogContent className="sm:max-w-md relative rounded-3xl border-apolar-gold/40 bg-gradient-to-br from-white via-apolar-gold/5 to-apolar-gold/10 shadow-[0_8px_32px_-8px_rgba(255,204,0,0.35)] max-h-[85vh] overflow-y-auto pb-10">
           {/* Cauda de balão de pensamento */}
-          <span className="absolute -bottom-2 left-8 h-3.5 w-3.5 rounded-full bg-gradient-to-br from-apolar-gold/30 to-white border border-apolar-gold/40" />
-          <span className="absolute -bottom-5 left-5 h-2 w-2 rounded-full bg-white border border-apolar-gold/40" />
+          <span className="absolute bottom-3 left-8 h-3.5 w-3.5 rounded-full bg-gradient-to-br from-apolar-gold/30 to-white border border-apolar-gold/40" />
+          <span className="absolute bottom-1 left-5 h-2 w-2 rounded-full bg-white border border-apolar-gold/40" />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-apolar-blue">
               <span className="flex items-center justify-center h-8 w-8 rounded-full bg-apolar-gold/20 text-apolar-blue">
