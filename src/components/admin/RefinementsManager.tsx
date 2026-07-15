@@ -219,6 +219,54 @@ export function RefinementsManager() {
     }
   };
 
+  const startEdit = (ref: Refinement) => {
+    setEditingId(ref.id);
+    setEditInstruction(ref.instruction);
+    setEditCategory(ref.category);
+    setEditPriority(ref.priority);
+    setEditModuleHint(ref.module_hint || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditInstruction('');
+    setEditCategory('correção');
+    setEditPriority(0);
+    setEditModuleHint('');
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editInstruction.trim()) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('prompt_refinements')
+        .update({
+          instruction: editInstruction.trim(),
+          category: editCategory,
+          priority: editPriority,
+          module_hint: editModuleHint.trim() || null,
+        })
+        .eq('id', id);
+      if (error) throw error;
+      setRefinements(prev => prev.map(r => r.id === id ? {
+        ...r,
+        instruction: editInstruction.trim(),
+        category: editCategory,
+        priority: editPriority,
+        module_hint: editModuleHint.trim() || null,
+      } : r));
+      toast({ title: 'Refinamento atualizado' });
+      cancelEdit();
+    } catch (error) {
+      console.error('Erro ao editar refinamento:', error);
+      toast({ title: 'Erro', description: 'Não foi possível salvar as alterações.', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+
   const activeCount = refinements.filter(r => r.is_active).length;
   const getCategoryConfig = (cat: string) => CATEGORY_OPTIONS.find(c => c.value === cat) || CATEGORY_OPTIONS[0];
 
