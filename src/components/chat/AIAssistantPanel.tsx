@@ -964,6 +964,36 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
           </p>
         </div>
       </div>
+
+      <Dialog open={refinementOpen} onOpenChange={setRefinementOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-apolar-blue">
+              <MessageSquarePlus className="h-5 w-5" />
+              Sugerir refinamento
+            </DialogTitle>
+            <DialogDescription>
+              Encontrou uma resposta incorreta ou incompleta? Descreva o ajuste que a AIA deveria fazer. Sua sugestão será revisada por um administrador.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={refinementText}
+            onChange={(e) => setRefinementText(e.target.value)}
+            placeholder="Ex: Ao falar sobre comissão de locação, o valor correto é X%, não Y% como foi informado."
+            className="min-h-[120px]"
+            maxLength={2000}
+          />
+          <p className="text-[11px] text-muted-foreground text-right">{refinementText.length}/2000</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefinementOpen(false)} disabled={sendingRefinement}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmitRefinement} disabled={sendingRefinement || refinementText.trim().length < 5}>
+              {sendingRefinement ? 'Enviando...' : 'Enviar sugestão'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
