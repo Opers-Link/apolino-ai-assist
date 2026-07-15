@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, Calculator, Lightbulb, MessageSquarePlus } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,8 +15,10 @@ interface Message {
   id: string;
   content: string;
   isUser: boolean;
+  isSystem?: boolean;
   timestamp: Date;
 }
+
 
 interface AIAssistantPanelProps {
   isOpen: boolean;
