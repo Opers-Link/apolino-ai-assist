@@ -22,15 +22,6 @@ serve(async (req) => {
   }
 
   try {
-    const { period_start, period_end } = await req.json();
-
-    if (!period_start || !period_end) {
-      return new Response(
-        JSON.stringify({ error: 'period_start e period_end são obrigatórios' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
@@ -40,6 +31,39 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Auth: admin ou gerente
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Token inválido' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const callerId = claimsData.claims.sub as string;
+    const { data: callerRoles } = await supabase
+      .from('user_roles').select('role').eq('user_id', callerId);
+    const roleSet = new Set((callerRoles || []).map((r: any) => r.role));
+    if (!roleSet.has('admin') && !roleSet.has('gerente')) {
+      return new Response(JSON.stringify({ error: 'Sem permissão' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { period_start, period_end } = await req.json();
+
+    if (!period_start || !period_end) {
+      return new Response(
+        JSON.stringify({ error: 'period_start e period_end são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Buscar conversas do período
     const { data: conversations, error: convError } = await supabase
