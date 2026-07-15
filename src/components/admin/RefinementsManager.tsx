@@ -46,10 +46,13 @@ export function RefinementsManager() {
   const [newPriority, setNewPriority] = useState(0);
   const [newModuleHint, setNewModuleHint] = useState('');
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
+  const [suggestionFilter, setSuggestionFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const { toast } = useToast();
 
   useEffect(() => {
     loadRefinements();
+    loadSuggestions();
   }, []);
 
   const loadRefinements = async () => {
@@ -68,6 +71,84 @@ export function RefinementsManager() {
       setLoading(false);
     }
   };
+
+  const loadSuggestions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_refinement_suggestions')
+        .select('id, suggestion, context, status, created_at, external_user_id')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setSuggestions(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar sugestões:', error);
+    }
+  };
+
+  const handleApproveSuggestion = async (s: UserSuggestion) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: inserted, error: insertError } = await supabase
+        .from('prompt_refinements')
+        .insert({
+          instruction: s.suggestion,
+          category: 'correção',
+          priority: 0,
+          created_by: user?.id || null,
+        })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+
+      const { error: updateError } = await supabase
+        .from('user_refinement_suggestions')
+        .update({
+          status: 'approved',
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+          promoted_refinement_id: inserted?.id || null,
+        })
+        .eq('id', s.id);
+      if (updateError) throw updateError;
+
+      toast({ title: 'Sugestão aprovada', description: 'Convertida em instrução de refinamento ativa.' });
+      loadRefinements();
+      loadSuggestions();
+    } catch (error) {
+      console.error('Erro ao aprovar sugestão:', error);
+      toast({ title: 'Erro', description: 'Não foi possível aprovar a sugestão.', variant: 'destructive' });
+    }
+  };
+
+  const handleRejectSuggestion = async (id: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('user_refinement_suggestions')
+        .update({
+          status: 'rejected',
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      if (error) throw error;
+      loadSuggestions();
+      toast({ title: 'Sugestão rejeitada' });
+    } catch (error) {
+      console.error('Erro ao rejeitar sugestão:', error);
+    }
+  };
+
+  const handleDeleteSuggestion = async (id: string) => {
+    try {
+      const { error } = await supabase.from('user_refinement_suggestions').delete().eq('id', id);
+      if (error) throw error;
+      setSuggestions(prev => prev.filter(s => s.id !== id));
+    } catch (error) {
+      console.error('Erro ao remover sugestão:', error);
+    }
+  };
+
 
   const handleAdd = async () => {
     if (!newInstruction.trim()) return;
