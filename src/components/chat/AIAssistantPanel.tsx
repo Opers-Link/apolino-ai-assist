@@ -473,7 +473,32 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   }, [conversationId, lastActivityTime, aiDisabled]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading || isCreatingConversation) return;
+    if (!inputValue.trim() || isLoading || isCreatingConversation || sendingRefinement) return;
+
+    // Fluxo do Modo Refinamento: envia sugestão para revisão em vez de chamar a IA
+    if (refinementMode) {
+      const text = inputValue.trim();
+      setInputValue('');
+      const ok = await handleSubmitRefinement(text);
+      if (ok) {
+        setRefinementMode(false);
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            id: `sys_${Date.now()}`,
+            content: '✅ Sugestão enviada. Obrigado! Um administrador irá revisar.',
+            isUser: false,
+            isSystem: true,
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // Restaurar texto para o usuário tentar de novo
+        setInputValue(text);
+      }
+      return;
+    }
+
 
     // Variável local para rastrear o ID da conversa (evita race condition com state assíncrono)
     let currentConversationId = conversationId;
