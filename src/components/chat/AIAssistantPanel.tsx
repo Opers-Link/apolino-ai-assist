@@ -410,21 +410,12 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
 
       if (timeSinceLastActivity >= INACTIVITY_TIMEOUT_MS) {
         // Verificar se NÃO solicitou atendimento humano
-        const { data } = await supabase
-          .from('chat_conversations')
-          .select('status, human_requested_at')
-          .eq('id', conversationId)
-          .single();
+        const { data: rows } = await (supabase as any).rpc('get_chat_conversation_state', { p_id: conversationId });
+        const data = Array.isArray(rows) ? rows[0] : null;
 
         // Só inativar se NÃO solicitou humano
         if (data && !data.human_requested_at && data.status !== 'needs_help' && data.status !== 'in_progress') {
-          await supabase
-            .from('chat_conversations')
-            .update({
-              status: 'inactive'
-              // NÃO define ended_at - reservado para atendimentos humanos finalizados
-            })
-            .eq('id', conversationId);
+          await (supabase as any).rpc('chat_conversation_mark_inactive', { p_id: conversationId });
 
           // Limpar localStorage ao inativar
           localStorage.removeItem('aia_conversation_id');
