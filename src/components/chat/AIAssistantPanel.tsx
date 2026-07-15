@@ -885,17 +885,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               <Ticket className="h-4 w-4" />
               Abrir ticket
             </Button>
-            <button
+            <Button
               onClick={() => setRefinementOpen(true)}
-              className="group relative flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-br from-apolar-gold/20 via-white to-apolar-gold/10 border border-apolar-gold/50 text-apolar-blue text-sm font-medium shadow-[0_2px_10px_-2px_rgba(255,204,0,0.35)] hover:shadow-[0_4px_18px_-4px_rgba(255,204,0,0.55)] hover:-translate-y-0.5 transition-all"
-              aria-label="Sugerir refinamento"
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10 transition-all"
             >
-              <MessageSquarePlus className="h-4 w-4 text-apolar-gold-dark group-hover:scale-110 transition-transform" />
-              <span>Refinar resposta</span>
-              {/* Cauda de balão de pensamento */}
-              <span className="absolute -bottom-1.5 left-6 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-apolar-gold/30 to-white border border-apolar-gold/50" />
-              <span className="absolute -bottom-3 left-4 h-1.5 w-1.5 rounded-full bg-white border border-apolar-gold/50" />
-            </button>
+              <MessageSquarePlus className="h-4 w-4" />
+              Refinar resposta
+            </Button>
             {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
@@ -927,13 +925,18 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
       </div>
 
       <Dialog open={refinementOpen} onOpenChange={setRefinementOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md relative overflow-visible rounded-3xl border-apolar-gold/40 bg-gradient-to-br from-white via-apolar-gold/5 to-apolar-gold/10 shadow-[0_8px_32px_-8px_rgba(255,204,0,0.35)]">
+          {/* Cauda de balão de pensamento */}
+          <span className="absolute -bottom-2 left-8 h-3.5 w-3.5 rounded-full bg-gradient-to-br from-apolar-gold/30 to-white border border-apolar-gold/40" />
+          <span className="absolute -bottom-5 left-5 h-2 w-2 rounded-full bg-white border border-apolar-gold/40" />
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-apolar-blue">
-              <MessageSquarePlus className="h-5 w-5" />
+              <span className="flex items-center justify-center h-8 w-8 rounded-full bg-apolar-gold/20 text-apolar-blue">
+                <MessageSquarePlus className="h-4 w-4" />
+              </span>
               Sugerir refinamento
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
               Encontrou uma resposta incorreta ou incompleta? Descreva o ajuste que a AIA deveria fazer. Sua sugestão será revisada por um administrador.
             </DialogDescription>
           </DialogHeader>
@@ -941,15 +944,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
             value={refinementText}
             onChange={(e) => setRefinementText(e.target.value)}
             placeholder="Ex: Ao falar sobre comissão de locação, o valor correto é X%, não Y% como foi informado."
-            className="min-h-[120px]"
+            className="min-h-[120px] rounded-xl border-apolar-gold/30 focus-visible:ring-apolar-gold/50 bg-white/80"
             maxLength={2000}
           />
           <p className="text-[11px] text-muted-foreground text-right">{refinementText.length}/2000</p>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setRefinementOpen(false)} disabled={sendingRefinement}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmitRefinement} disabled={sendingRefinement || refinementText.trim().length < 5}>
+            <Button onClick={handleSubmitRefinement} disabled={sendingRefinement || refinementText.trim().length < 5} className="bg-apolar-blue hover:bg-apolar-blue/90">
               {sendingRefinement ? 'Enviando...' : 'Enviar sugestão'}
             </Button>
           </DialogFooter>
