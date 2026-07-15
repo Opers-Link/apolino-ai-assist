@@ -918,14 +918,20 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               Abrir ticket
             </Button>
             <Button
-              onClick={() => setRefinementOpen(true)}
-              variant="outline"
+              onClick={toggleRefinementMode}
+              variant={refinementMode ? 'default' : 'outline'}
               size="sm"
-              className="flex-1 gap-2 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10 transition-all"
+              className={cn(
+                'flex-1 gap-2 transition-all',
+                refinementMode
+                  ? 'bg-apolar-gold text-apolar-blue hover:bg-apolar-gold/90 border-apolar-gold shadow-md'
+                  : 'border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10'
+              )}
             >
               <MessageSquarePlus className="h-4 w-4" />
-              Refinar resposta
+              {refinementMode ? 'Cancelar refinamento' : 'Refinar resposta'}
             </Button>
+
             {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
