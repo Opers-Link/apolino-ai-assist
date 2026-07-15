@@ -99,6 +99,28 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Escapar HTML para evitar injeção
+    const escapeHtml = (s: unknown): string => {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+    const safeNumber = (v: unknown): number => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const safeMetrics: MetricsData | undefined = metrics ? {
+      totalConversations: safeNumber((metrics as any).totalConversations),
+      totalMessages: safeNumber((metrics as any).totalMessages),
+      activeConversations: safeNumber((metrics as any).activeConversations),
+      aiRequests: safeNumber((metrics as any).aiRequests),
+      avgAiRequestsPerConversation: safeNumber((metrics as any).avgAiRequestsPerConversation),
+    } : undefined;
+
     // Buscar insight da tabela correta
     const tableName = insight_type === 'conversation' ? 'conversation_insights' : 'manual_insights';
     const { data: insight, error: insightError } = await supabaseAdmin
@@ -128,9 +150,9 @@ const handler = async (req: Request): Promise<Response> => {
       ? `${new Date(insight.period_start).toLocaleDateString('pt-BR')} a ${new Date(insight.period_end).toLocaleDateString('pt-BR')}`
       : 'Período não especificado';
 
-    // Título e descrição - compatível com ambos os tipos
-    const insightTitle = insight.title || `Insights de Conversas - ${periodText}`;
-    const insightDescription = insight.description || 'Relatório de Insights gerado automaticamente';
+    // Título e descrição - compatível com ambos os tipos (escapados)
+    const insightTitle = escapeHtml(insight.title || `Insights de Conversas - ${periodText}`);
+    const insightDescription = escapeHtml(insight.description || 'Relatório de Insights gerado automaticamente');
     const generatedAt = insight.generated_at || new Date().toISOString();
 
     // Gerar HTML do e-mail
