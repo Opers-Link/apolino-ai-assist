@@ -367,43 +367,104 @@ export function RefinementsManager() {
         <div className="space-y-2">
           {refinements.map((ref) => {
             const catConfig = getCategoryConfig(ref.category);
+            const isEditing = editingId === ref.id;
             return (
-              <Card key={ref.id} className={`bg-white/60 transition-opacity ${!ref.is_active ? 'opacity-50' : ''}`}>
+              <Card key={ref.id} className={`bg-white/60 transition-opacity ${!ref.is_active && !isEditing ? 'opacity-50' : ''}`}>
                 <CardContent className="py-3 px-4">
-                  <div className="flex items-start gap-3">
-                    <Switch
-                      checked={ref.is_active}
-                      onCheckedChange={() => handleToggle(ref.id, ref.is_active)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm whitespace-pre-wrap">{ref.instruction}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge className={`text-xs ${catConfig.color}`}>
-                          {catConfig.label}
-                        </Badge>
-                        {ref.module_hint && (
-                          <Badge variant="outline" className="text-xs">
-                            {ref.module_hint}
-                          </Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          Prioridade: {ref.priority}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(ref.created_at).toLocaleDateString('pt-BR')}
-                        </span>
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Instrução *</Label>
+                        <Textarea
+                          value={editInstruction}
+                          onChange={(e) => setEditInstruction(e.target.value)}
+                          className="min-h-[100px] mt-1"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label>Categoria</Label>
+                          <Select value={editCategory} onValueChange={setEditCategory}>
+                            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {CATEGORY_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Prioridade (0-10)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={10}
+                            value={editPriority}
+                            onChange={(e) => setEditPriority(Number(e.target.value))}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Módulo (opcional)</Label>
+                          <Input
+                            value={editModuleHint}
+                            onChange={(e) => setEditModuleHint(e.target.value)}
+                            placeholder="Ex: locação, vendas"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={cancelEdit}>Cancelar</Button>
+                        <Button size="sm" onClick={() => handleSaveEdit(ref.id)} disabled={!editInstruction.trim() || savingEdit}>
+                          {savingEdit ? 'Salvando...' : 'Salvar'}
+                        </Button>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(ref.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <Switch
+                        checked={ref.is_active}
+                        onCheckedChange={() => handleToggle(ref.id, ref.is_active)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm whitespace-pre-wrap">{ref.instruction}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge className={`text-xs ${catConfig.color}`}>
+                            {catConfig.label}
+                          </Badge>
+                          {ref.module_hint && (
+                            <Badge variant="outline" className="text-xs">
+                              {ref.module_hint}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            Prioridade: {ref.priority}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(ref.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-apolar-blue hover:text-apolar-blue"
+                        onClick={() => startEdit(ref)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(ref.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
