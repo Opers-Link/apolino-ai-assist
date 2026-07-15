@@ -160,37 +160,33 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   const createConversation = async (sid: string): Promise<string | null> => {
     try {
       const userAgent = navigator.userAgent;
-      
+      const newId = crypto.randomUUID();
+
       const insertData: any = {
+        id: newId,
         session_id: sid,
         user_agent: userAgent,
         status: 'active',
         total_messages: 0,
       };
-      
+
       // Vincular ao usuário externo se disponível
       if (externalUserId) {
         insertData.external_user_id = externalUserId;
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('chat_conversations')
-        .insert(insertData)
-        .select()
-        .single();
+        .insert(insertData);
 
       if (error) {
         console.error('Erro ao criar conversa:', error);
         return null;
       }
 
-      if (data) {
-        setConversationId(data.id);
-        // Salvar no localStorage para recuperação
-        localStorage.setItem('aia_conversation_id', data.id);
-        return data.id;
-      }
-      return null;
+      setConversationId(newId);
+      localStorage.setItem('aia_conversation_id', newId);
+      return newId;
     } catch (error) {
       console.error('Erro ao criar conversa:', error);
       return null;
@@ -205,9 +201,8 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     }
 
     try {
-      // Gerar UUID no cliente para evitar dependência da política de SELECT
       const messageId = crypto.randomUUID();
-      
+
       const { error } = await supabase
         .from('chat_messages')
         .insert({
@@ -223,13 +218,10 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
         return null;
       }
 
-      await supabase
-        .from('chat_conversations')
-        .update({ 
-          total_messages: messageOrder,
-          status: 'active'
-        })
-        .eq('id', targetConversationId);
+      await (supabase as any).rpc('chat_conversation_bump_activity', {
+        p_id: targetConversationId,
+        p_total: messageOrder,
+      });
 
       return messageId;
     } catch (error) {
