@@ -39,6 +39,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   const [lastActivityTime, setLastActivityTime] = useState<Date>(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [refinementOpen, setRefinementOpen] = useState(false);
+  const [refinementText, setRefinementText] = useState('');
+  const [sendingRefinement, setSendingRefinement] = useState(false);
   
   
   const MAX_MESSAGES = 200;
