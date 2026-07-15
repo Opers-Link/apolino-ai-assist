@@ -1,73 +1,33 @@
+## Objetivo
+Substituir o modal "Sugerir refinamento" por um **modo refinamento** ativado dentro do próprio chat. Ao clicar em "Refinar resposta", o chat entra num estado visual diferenciado, mostra uma mensagem explicativa e a próxima mensagem enviada é registrada como sugestão de refinamento (indo para o painel admin), sem chamar a IA.
 
+## Fluxo de uso
+1. Usuário clica em **"Refinar resposta"** no rodapé do chat.
+2. O chat entra em **modo refinamento**:
+   - Uma mensagem do sistema aparece na conversa (balão dourado, ícone de lâmpada/refinamento):
+     > "**Modo refinamento ativado.** Descreva o ajuste que a AIA deveria fazer na última resposta. Sua próxima mensagem será enviada para revisão de um administrador — a IA não irá responder. [Cancelar]"
+   - O campo de input muda visualmente (borda dourada, placeholder trocado para *"Ex: Ao falar sobre comissão de locação, o valor correto é X%…"*).
+   - O botão "Refinar resposta" fica destacado como ativo.
+3. Usuário digita e envia.
+4. Em vez de chamar a edge function da IA, o texto é gravado em `user_refinement_suggestions` (mesma tabela usada hoje pelo modal), com o contexto das últimas 2 mensagens.
+5. O chat sai do modo refinamento e mostra uma mensagem do sistema de confirmação:
+   > "✅ Sugestão enviada. Obrigado! Um administrador irá revisar."
+6. Se o usuário clicar em **Cancelar** (na mensagem de sistema ou novamente em "Refinar resposta"), o modo é desativado sem enviar nada.
 
-# Instruções de Refinamento em Tempo Real (Correction Layer)
+## Mudanças
+### `src/components/chat/AIAssistantPanel.tsx`
+- Remover o `<Dialog>` de refinamento (linhas ~927-960) e o estado `refinementOpen`/`refinementText`.
+- Adicionar estado `refinementMode: boolean` e `sendingRefinement`.
+- No tipo `Message` (ou via campo adicional), suportar mensagens do tipo `system` para os balões informativos (ícone + texto, estilo diferenciado — fundo `apolar-gold/10`, borda dourada, ícone `MessageSquarePlus`).
+- Botão "Refinar resposta": alterna `refinementMode`. Quando ativo, muda estilo (fundo dourado sólido, texto azul) e injeta a mensagem de sistema "Modo refinamento ativado".
+- Input area: quando `refinementMode`, aplicar borda/anel dourado, trocar placeholder e o ícone do botão de envio.
+- `handleSendMessage`: se `refinementMode`, desviar o fluxo para chamar `handleSubmitRefinement` (reaproveitar a lógica atual de insert em `user_refinement_suggestions`), depois desativar o modo e adicionar mensagem de sistema de confirmação. Não incrementar contadores da IA nem chamar a edge function.
+- `handleSubmitRefinement` já existe; adaptar para receber o texto por parâmetro e não fechar dialog.
 
-## Conceito
+### Painel admin
+- Nenhuma mudança — os refinamentos continuam caindo em `user_refinement_suggestions` e aparecendo no `RefinementsManager` atual.
 
-Criar uma camada de **"Instruções de Refinamento"** separada do prompt mestre. Funciona como uma lista de correções e instruções específicas que são injetadas automaticamente no contexto da IA, sem poluir o prompt base.
-
-**Analogia**: O prompt mestre é a "constituição" da AIA. As instruções de refinamento são "portarias e decretos" — regras específicas que complementam sem alterar a base.
-
-## Como funciona
-
-O admin identifica uma resposta errada no chat → abre o painel de refinamentos → adiciona uma instrução como:
-
-> "Quando perguntarem sobre rescisão de contrato de locação, o prazo correto é 30 dias de aviso prévio, NÃO 90 dias como consta no manual v2.1"
-
-Essa instrução é salva no banco e automaticamente incluída no contexto da IA em todas as conversas seguintes.
-
-## Implementação
-
-### 1. Nova tabela `prompt_refinements`
-
-```text
-id              UUID (PK)
-instruction     TEXT       -- a instrução/correção
-category        TEXT       -- opcional: "correção", "complemento", "restrição"
-is_active       BOOLEAN    -- ativar/desativar sem deletar
-priority        INTEGER    -- ordem de importância
-created_by      UUID
-created_at      TIMESTAMP
-module_hint     TEXT       -- opcional: associar a um módulo específico
-```
-
-### 2. Novo componente `RefinementsManager`
-
-No painel admin (dentro de Configurações), uma nova aba "Refinamentos" ao lado do editor de prompt. Interface simples:
-- Lista de instruções ativas com toggle on/off
-- Botão "Adicionar refinamento" com campo de texto
-- Campo opcional de categoria e módulo associado
-- Contador de instruções ativas
-
-### 3. Edge Function `chat-with-ai` — injetar refinamentos
-
-Na montagem do prompt, após o master prompt e antes dos módulos de conhecimento, inserir um bloco:
-
-```text
-📌 INSTRUÇÕES DE REFINAMENTO (prioridade alta):
-- [instrução 1]
-- [instrução 2]
-...
-```
-
-Essas instruções são carregadas em paralelo com as outras queries (adicionando à Promise.all existente).
-
-### 4. Atalho desde o painel de conversas (opcional)
-
-Ao visualizar uma conversa no admin e identificar uma resposta errada, botão "Criar refinamento" que pré-preenche o contexto da pergunta/resposta problemática.
-
-## Arquivos afetados
-
-- **Nova migração SQL** — tabela `prompt_refinements` + RLS
-- **Novo componente** `src/components/admin/RefinementsManager.tsx`
-- **`src/pages/Admin.tsx`** — adicionar aba/seção de Refinamentos nas Configurações
-- **`supabase/functions/chat-with-ai/index.ts`** — query + injeção no prompt
-
-## Vantagens desta abordagem
-
-- Prompt mestre fica limpo e estável
-- Refinamentos podem ser ativados/desativados individualmente
-- Histórico de todas as correções feitas
-- Fácil de testar: ativa, testa no chat, desativa se não funcionar
-- Escala bem: dezenas de refinamentos sem impactar a legibilidade do prompt
-
+## Observações
+- Mantém compatível com a tabela existente (`suggestion`, `context`, `conversation_id`, `external_user_id`).
+- Não afeta o fluxo de mensagens da IA, contagem de mensagens ou timeout de inatividade (mensagens de refinamento não contam).
+- Não requer migração de banco.
