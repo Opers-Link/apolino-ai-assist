@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, Calculator, Lightbulb, MessageSquarePlus } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,8 +15,10 @@ interface Message {
   id: string;
   content: string;
   isUser: boolean;
+  isSystem?: boolean;
   timestamp: Date;
 }
+
 
 interface AIAssistantPanelProps {
   isOpen: boolean;
@@ -39,9 +40,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   const [lastActivityTime, setLastActivityTime] = useState<Date>(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [refinementOpen, setRefinementOpen] = useState(false);
-  const [refinementText, setRefinementText] = useState('');
+  const [refinementMode, setRefinementMode] = useState(false);
   const [sendingRefinement, setSendingRefinement] = useState(false);
+
   
   
   const MAX_MESSAGES = 200;
@@ -52,16 +53,16 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     window.open(MOVIDESK_URL, '_blank');
   };
 
-  const handleSubmitRefinement = async () => {
-    const text = refinementText.trim();
+  const handleSubmitRefinement = async (text: string) => {
     if (text.length < 5) {
       toast({ title: 'Descrição muito curta', description: 'Descreva o ajuste com pelo menos 5 caracteres.', variant: 'destructive' });
-      return;
+      return false;
     }
     setSendingRefinement(true);
     try {
-      // Contexto: últimas 2 mensagens
-      const lastMsgs = messages.slice(-2).map(m => `${m.isUser ? 'Usuário' : 'AIA'}: ${m.content}`).join('\n');
+      // Contexto: últimas 2 mensagens (ignora balões de sistema)
+      const lastMsgs = messages.filter(m => !m.isSystem).slice(-2)
+        .map(m => `${m.isUser ? 'Usuário' : 'AIA'}: ${m.content}`).join('\n');
       const { error } = await supabase.from('user_refinement_suggestions').insert({
         suggestion: text,
         context: lastMsgs || null,
@@ -69,16 +70,47 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
         external_user_id: externalUserId || null,
       });
       if (error) throw error;
-      toast({ title: 'Sugestão enviada', description: 'Obrigado! Um administrador irá revisar sua sugestão.' });
-      setRefinementText('');
-      setRefinementOpen(false);
+      return true;
     } catch (err) {
       console.error('Erro ao enviar refinamento:', err);
       toast({ title: 'Erro', description: 'Não foi possível enviar sua sugestão.', variant: 'destructive' });
+      return false;
     } finally {
       setSendingRefinement(false);
     }
   };
+
+  const toggleRefinementMode = () => {
+    setRefinementMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            id: `sys_${Date.now()}`,
+            content: 'Modo refinamento ativado. Descreva o ajuste que a AIA deveria fazer na última resposta. Sua próxima mensagem será enviada para revisão de um administrador — a IA não irá responder.',
+            isUser: false,
+            isSystem: true,
+            timestamp: new Date(),
+          },
+        ]);
+        setTimeout(() => textareaRef.current?.focus(), 50);
+      } else {
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            id: `sys_${Date.now()}`,
+            content: 'Modo refinamento cancelado.',
+            isUser: false,
+            isSystem: true,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      return next;
+    });
+  };
+
 
   // Recuperar conversa existente ao abrir o chat (sem criar nova)
   useEffect(() => {
@@ -441,7 +473,32 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   }, [conversationId, lastActivityTime, aiDisabled]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading || isCreatingConversation) return;
+    if (!inputValue.trim() || isLoading || isCreatingConversation || sendingRefinement) return;
+
+    // Fluxo do Modo Refinamento: envia sugestão para revisão em vez de chamar a IA
+    if (refinementMode) {
+      const text = inputValue.trim();
+      setInputValue('');
+      const ok = await handleSubmitRefinement(text);
+      if (ok) {
+        setRefinementMode(false);
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            id: `sys_${Date.now()}`,
+            content: '✅ Sugestão enviada. Obrigado! Um administrador irá revisar.',
+            isUser: false,
+            isSystem: true,
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // Restaurar texto para o usuário tentar de novo
+        setInputValue(text);
+      }
+      return;
+    }
+
 
     // Variável local para rastrear o ID da conversa (evita race condition com state assíncrono)
     let currentConversationId = conversationId;
@@ -747,49 +804,62 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
             </div>
           ) : (
             <div className="py-6 space-y-6">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-3",
-                    message.isUser ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {!message.isUser && (
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1.5 flex-shrink-0 shadow-sm">
-                      <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
+              {messages.map((message) => {
+                if (message.isSystem) {
+                  return (
+                    <div key={message.id} className="flex justify-center">
+                      <div className="max-w-[90%] flex items-start gap-2 rounded-2xl border border-apolar-gold/40 bg-apolar-gold/10 px-4 py-2.5 text-sm text-apolar-blue shadow-sm">
+                        <MessageSquarePlus className="h-4 w-4 mt-0.5 flex-shrink-0 text-apolar-gold" />
+                        <span className="leading-relaxed">{message.content}</span>
+                      </div>
                     </div>
-                  )}
-                  
+                  );
+                }
+                return (
                   <div
+                    key={message.id}
                     className={cn(
-                      "max-w-[85%] text-sm leading-relaxed",
-                      message.isUser
-                        ? "bg-apolar-blue text-white px-4 py-2.5 rounded-2xl rounded-br-md"
-                        : "text-gray-700"
+                      "flex gap-3",
+                      message.isUser ? "justify-end" : "justify-start"
                     )}
                   >
-                    {message.content.split(/(\[IMAGE:.*?\])/).map((part, index) => {
-                      const imageMatch = part.match(/\[IMAGE:(.*?)\]/);
-                      if (imageMatch) {
-                        const imageUrl = imageMatch[1];
-                        return (
-                          <div key={index} className="my-2">
-                            <img 
-                              src={imageUrl} 
-                              alt="Imagem do manual" 
-                              className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => window.open(imageUrl, '_blank')}
-                              loading="lazy"
-                            />
-                          </div>
-                        );
-                      }
-                      return part ? <span key={index} className="whitespace-pre-wrap">{part}</span> : null;
-                    })}
+                    {!message.isUser && (
+                      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1.5 flex-shrink-0 shadow-sm">
+                        <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
+                      </div>
+                    )}
+
+                    <div
+                      className={cn(
+                        "max-w-[85%] text-sm leading-relaxed",
+                        message.isUser
+                          ? "bg-apolar-blue text-white px-4 py-2.5 rounded-2xl rounded-br-md"
+                          : "text-gray-700"
+                      )}
+                    >
+                      {message.content.split(/(\[IMAGE:.*?\])/).map((part, index) => {
+                        const imageMatch = part.match(/\[IMAGE:(.*?)\]/);
+                        if (imageMatch) {
+                          const imageUrl = imageMatch[1];
+                          return (
+                            <div key={index} className="my-2">
+                              <img 
+                                src={imageUrl} 
+                                alt="Imagem do manual" 
+                                className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => window.open(imageUrl, '_blank')}
+                                loading="lazy"
+                              />
+                            </div>
+                          );
+                        }
+                        return part ? <span key={index} className="whitespace-pre-wrap">{part}</span> : null;
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+
               
               {isLoading && (
                 <div className="flex gap-3">
@@ -831,14 +901,24 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
             </div>
           )}
           
-          <div className="relative bg-gray-50 rounded-2xl border border-gray-200 focus-within:border-apolar-blue/50 focus-within:ring-2 focus-within:ring-apolar-blue/10 transition-all">
+          <div className={cn(
+            "relative bg-gray-50 rounded-2xl border transition-all",
+            refinementMode
+              ? "border-apolar-gold ring-2 ring-apolar-gold/30 bg-apolar-gold/5"
+              : "border-gray-200 focus-within:border-apolar-blue/50 focus-within:ring-2 focus-within:ring-apolar-blue/10"
+          )}>
             <Textarea
               ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder={conversationClosed ? "Iniciar nova conversa..." : "Pedir para AIA"}
-              disabled={isLoading || isCreatingConversation}
+              placeholder={
+                refinementMode
+                  ? "Ex: Ao falar sobre comissão de locação, o valor correto é X%, não Y%…"
+                  : (conversationClosed ? "Iniciar nova conversa..." : "Pedir para AIA")
+              }
+              disabled={isLoading || isCreatingConversation || sendingRefinement}
+
               className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-20 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
               rows={1}
             />
@@ -865,9 +945,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               </TooltipProvider>
               <Button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading || isCreatingConversation}
+                disabled={!inputValue.trim() || isLoading || isCreatingConversation || sendingRefinement}
                 size="icon"
-                className="h-8 w-8 rounded-full bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white transition-colors disabled:opacity-40"
+                className={cn(
+                  "h-8 w-8 rounded-full transition-colors disabled:opacity-40",
+                  refinementMode
+                    ? "bg-apolar-gold text-apolar-blue hover:bg-apolar-gold/90"
+                    : "bg-gray-200 hover:bg-apolar-blue text-gray-600 hover:text-white"
+                )}
+
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -886,14 +972,20 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               Abrir ticket
             </Button>
             <Button
-              onClick={() => setRefinementOpen(true)}
-              variant="outline"
+              onClick={toggleRefinementMode}
+              variant={refinementMode ? 'default' : 'outline'}
               size="sm"
-              className="flex-1 gap-2 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10 transition-all"
+              className={cn(
+                'flex-1 gap-2 transition-all',
+                refinementMode
+                  ? 'bg-apolar-gold text-apolar-blue hover:bg-apolar-gold/90 border-apolar-gold shadow-md'
+                  : 'border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10'
+              )}
             >
               <MessageSquarePlus className="h-4 w-4" />
-              Refinar resposta
+              {refinementMode ? 'Cancelar refinamento' : 'Refinar resposta'}
             </Button>
+
             {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
@@ -923,43 +1015,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
           </p>
         </div>
       </div>
-
-      <Dialog open={refinementOpen} onOpenChange={setRefinementOpen}>
-        <DialogContent className="sm:max-w-md relative rounded-3xl border-apolar-gold/40 bg-gradient-to-br from-white via-apolar-gold/5 to-apolar-gold/10 shadow-[0_8px_32px_-8px_rgba(255,204,0,0.35)] max-h-[85vh] overflow-y-auto pb-10">
-          {/* Cauda de balão de pensamento */}
-          <span className="absolute bottom-3 left-8 h-3.5 w-3.5 rounded-full bg-gradient-to-br from-apolar-gold/30 to-white border border-apolar-gold/40" />
-          <span className="absolute bottom-1 left-5 h-2 w-2 rounded-full bg-white border border-apolar-gold/40" />
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-apolar-blue">
-              <span className="flex items-center justify-center h-8 w-8 rounded-full bg-apolar-gold/20 text-apolar-blue">
-                <MessageSquarePlus className="h-4 w-4" />
-              </span>
-              Sugerir refinamento
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Encontrou uma resposta incorreta ou incompleta? Descreva o ajuste que a AIA deveria fazer. Sua sugestão será revisada por um administrador.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={refinementText}
-            onChange={(e) => setRefinementText(e.target.value)}
-            placeholder="Ex: Ao falar sobre comissão de locação, o valor correto é X%, não Y% como foi informado."
-            className="min-h-[120px] rounded-xl border-apolar-gold/30 focus-visible:ring-apolar-gold/50 bg-white/80"
-            maxLength={2000}
-          />
-          <p className="text-[11px] text-muted-foreground text-right">{refinementText.length}/2000</p>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setRefinementOpen(false)} disabled={sendingRefinement}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmitRefinement} disabled={sendingRefinement || refinementText.trim().length < 5} className="bg-apolar-blue hover:bg-apolar-blue/90">
-              {sendingRefinement ? 'Enviando...' : 'Enviar sugestão'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
+
 
 export default AIAssistantPanel;
