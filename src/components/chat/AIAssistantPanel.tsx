@@ -885,17 +885,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               <Ticket className="h-4 w-4" />
               Abrir ticket
             </Button>
-            <button
+            <Button
               onClick={() => setRefinementOpen(true)}
-              className="group relative flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-gradient-to-br from-apolar-gold/20 via-white to-apolar-gold/10 border border-apolar-gold/50 text-apolar-blue text-sm font-medium shadow-[0_2px_10px_-2px_rgba(255,204,0,0.35)] hover:shadow-[0_4px_18px_-4px_rgba(255,204,0,0.55)] hover:-translate-y-0.5 transition-all"
-              aria-label="Sugerir refinamento"
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10 transition-all"
             >
-              <MessageSquarePlus className="h-4 w-4 text-apolar-gold-dark group-hover:scale-110 transition-transform" />
-              <span>Refinar resposta</span>
-              {/* Cauda de balão de pensamento */}
-              <span className="absolute -bottom-1.5 left-6 h-2.5 w-2.5 rounded-full bg-gradient-to-br from-apolar-gold/30 to-white border border-apolar-gold/50" />
-              <span className="absolute -bottom-3 left-4 h-1.5 w-1.5 rounded-full bg-white border border-apolar-gold/50" />
-            </button>
+              <MessageSquarePlus className="h-4 w-4" />
+              Refinar resposta
+            </Button>
             {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
