@@ -793,9 +793,46 @@ export type Database = {
         Args: { conversation_messages: string }
         Returns: Database["public"]["Enums"]["conversation_category"]
       }
+      chat_conversation_bump_activity: {
+        Args: { p_id: string; p_total: number }
+        Returns: undefined
+      }
+      chat_conversation_finish: { Args: { p_id: string }; Returns: undefined }
+      chat_conversation_mark_inactive: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      chat_conversation_request_human: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       extract_conversation_tags: {
         Args: { conversation_messages: string }
         Returns: string[]
+      }
+      find_active_conversation_by_external_user: {
+        Args: { p_external_user_id: string }
+        Returns: {
+          ai_enabled: boolean
+          external_user_id: string
+          human_requested_at: string
+          id: string
+          session_id: string
+          status: string
+          total_messages: number
+        }[]
+      }
+      get_chat_conversation_state: {
+        Args: { p_id: string }
+        Returns: {
+          ai_enabled: boolean
+          external_user_id: string
+          human_requested_at: string
+          id: string
+          session_id: string
+          status: string
+          total_messages: number
+        }[]
       }
       has_role: {
         Args: {
