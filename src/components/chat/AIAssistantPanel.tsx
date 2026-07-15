@@ -91,14 +91,11 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     try {
       // Se temos um externalUserId, buscar conversa ativa por ele (prioridade)
       if (externalUserId) {
-        const { data: externalConversation, error: extError } = await supabase
-          .from('chat_conversations')
-          .select('id, session_id, status, ai_enabled')
-          .eq('external_user_id', externalUserId)
-          .in('status', ['active', 'needs_help', 'in_progress'])
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .single();
+        const { data: extRows, error: extError } = await (supabase as any).rpc(
+          'find_active_conversation_by_external_user',
+          { p_external_user_id: externalUserId }
+        );
+        const externalConversation = Array.isArray(extRows) ? extRows[0] : null;
 
         if (!extError && externalConversation) {
           setConversationId(externalConversation.id);
@@ -112,16 +109,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
 
       // Fallback: tentar recuperar conversa ativa do localStorage
       const storedConversationId = localStorage.getItem('aia_conversation_id');
-      
-      if (storedConversationId) {
-        const { data: existingConversation, error } = await supabase
-          .from('chat_conversations')
-          .select('id, session_id, status, ai_enabled')
-          .eq('id', storedConversationId)
-          .in('status', ['active', 'needs_help', 'in_progress'])
-          .single();
 
-        if (!error && existingConversation) {
+      if (storedConversationId) {
+        const { data: rows, error } = await (supabase as any).rpc(
+          'get_chat_conversation_state',
+          { p_id: storedConversationId }
+        );
+        const existingConversation = Array.isArray(rows) ? rows[0] : null;
+
+        if (!error && existingConversation && ['active','needs_help','in_progress'].includes(existingConversation.status)) {
           setConversationId(existingConversation.id);
           setSessionId(existingConversation.session_id);
           setAiDisabled(existingConversation.ai_enabled === false || existingConversation.status === 'in_progress');
