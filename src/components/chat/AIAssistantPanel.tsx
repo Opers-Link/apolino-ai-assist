@@ -52,6 +52,34 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     window.open(MOVIDESK_URL, '_blank');
   };
 
+  const handleSubmitRefinement = async () => {
+    const text = refinementText.trim();
+    if (text.length < 5) {
+      toast({ title: 'Descrição muito curta', description: 'Descreva o ajuste com pelo menos 5 caracteres.', variant: 'destructive' });
+      return;
+    }
+    setSendingRefinement(true);
+    try {
+      // Contexto: últimas 2 mensagens
+      const lastMsgs = messages.slice(-2).map(m => `${m.isUser ? 'Usuário' : 'AIA'}: ${m.content}`).join('\n');
+      const { error } = await supabase.from('user_refinement_suggestions').insert({
+        suggestion: text,
+        context: lastMsgs || null,
+        conversation_id: conversationId || null,
+        external_user_id: externalUserId || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Sugestão enviada', description: 'Obrigado! Um administrador irá revisar sua sugestão.' });
+      setRefinementText('');
+      setRefinementOpen(false);
+    } catch (err) {
+      console.error('Erro ao enviar refinamento:', err);
+      toast({ title: 'Erro', description: 'Não foi possível enviar sua sugestão.', variant: 'destructive' });
+    } finally {
+      setSendingRefinement(false);
+    }
+  };
+
   // Recuperar conversa existente ao abrir o chat (sem criar nova)
   useEffect(() => {
     if (isOpen) {
