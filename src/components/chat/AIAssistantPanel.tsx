@@ -779,49 +779,62 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
             </div>
           ) : (
             <div className="py-6 space-y-6">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex gap-3",
-                    message.isUser ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {!message.isUser && (
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1.5 flex-shrink-0 shadow-sm">
-                      <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
+              {messages.map((message) => {
+                if (message.isSystem) {
+                  return (
+                    <div key={message.id} className="flex justify-center">
+                      <div className="max-w-[90%] flex items-start gap-2 rounded-2xl border border-apolar-gold/40 bg-apolar-gold/10 px-4 py-2.5 text-sm text-apolar-blue shadow-sm">
+                        <MessageSquarePlus className="h-4 w-4 mt-0.5 flex-shrink-0 text-apolar-gold" />
+                        <span className="leading-relaxed">{message.content}</span>
+                      </div>
                     </div>
-                  )}
-                  
+                  );
+                }
+                return (
                   <div
+                    key={message.id}
                     className={cn(
-                      "max-w-[85%] text-sm leading-relaxed",
-                      message.isUser
-                        ? "bg-apolar-blue text-white px-4 py-2.5 rounded-2xl rounded-br-md"
-                        : "text-gray-700"
+                      "flex gap-3",
+                      message.isUser ? "justify-end" : "justify-start"
                     )}
                   >
-                    {message.content.split(/(\[IMAGE:.*?\])/).map((part, index) => {
-                      const imageMatch = part.match(/\[IMAGE:(.*?)\]/);
-                      if (imageMatch) {
-                        const imageUrl = imageMatch[1];
-                        return (
-                          <div key={index} className="my-2">
-                            <img 
-                              src={imageUrl} 
-                              alt="Imagem do manual" 
-                              className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => window.open(imageUrl, '_blank')}
-                              loading="lazy"
-                            />
-                          </div>
-                        );
-                      }
-                      return part ? <span key={index} className="whitespace-pre-wrap">{part}</span> : null;
-                    })}
+                    {!message.isUser && (
+                      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-apolar-gold via-apolar-gold-alt to-apolar-gold-light p-1.5 flex-shrink-0 shadow-sm">
+                        <img src={aiaLogo} alt="AIA" className="h-full w-full object-contain brightness-0 opacity-70" />
+                      </div>
+                    )}
+
+                    <div
+                      className={cn(
+                        "max-w-[85%] text-sm leading-relaxed",
+                        message.isUser
+                          ? "bg-apolar-blue text-white px-4 py-2.5 rounded-2xl rounded-br-md"
+                          : "text-gray-700"
+                      )}
+                    >
+                      {message.content.split(/(\[IMAGE:.*?\])/).map((part, index) => {
+                        const imageMatch = part.match(/\[IMAGE:(.*?)\]/);
+                        if (imageMatch) {
+                          const imageUrl = imageMatch[1];
+                          return (
+                            <div key={index} className="my-2">
+                              <img 
+                                src={imageUrl} 
+                                alt="Imagem do manual" 
+                                className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                onClick={() => window.open(imageUrl, '_blank')}
+                                loading="lazy"
+                              />
+                            </div>
+                          );
+                        }
+                        return part ? <span key={index} className="whitespace-pre-wrap">{part}</span> : null;
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+
               
               {isLoading && (
                 <div className="flex gap-3">
