@@ -266,14 +266,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     }
   
     try {
-      await supabase
-        .from('chat_conversations')
-        .update({
-          status: 'needs_help',
-          human_requested_at: new Date().toISOString(),
-          tags: ['humano_solicitado']
-        })
-        .eq('id', conversationId);
+      await (supabase as any).rpc('chat_conversation_request_human', { p_id: conversationId });
   
       const systemMessage: Message = {
         id: Date.now().toString(),
