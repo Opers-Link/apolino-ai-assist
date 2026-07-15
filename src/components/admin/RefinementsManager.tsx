@@ -9,7 +9,16 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, AlertTriangle, CheckCircle, Shield, Lightbulb } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, CheckCircle, Shield, Lightbulb, MessageSquarePlus, Check, X } from 'lucide-react';
+
+interface UserSuggestion {
+  id: string;
+  suggestion: string;
+  context: string | null;
+  status: string;
+  created_at: string;
+  external_user_id: string | null;
+}
 
 interface Refinement {
   id: string;
