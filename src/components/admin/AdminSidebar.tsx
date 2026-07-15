@@ -27,11 +27,11 @@ const mainMenuItems = [
     icon: MessageSquare,
     value: "conversations",
   },
-  {
-    title: "Atendimentos",
-    icon: UserCircle,
-    value: "atendimentos",
-  },
+  // {
+  //   title: "Atendimentos",
+  //   icon: UserCircle,
+  //   value: "atendimentos",
+  // },
   {
     title: "Insights Manual",
     icon: FileUp,
