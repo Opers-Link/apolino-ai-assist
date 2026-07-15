@@ -482,10 +482,17 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
       const ok = await handleSubmitRefinement(text);
       if (ok) {
         setRefinementMode(false);
+        const now = Date.now();
         setMessages((msgs) => [
           ...msgs,
           {
-            id: `sys_${Date.now()}`,
+            id: `ref_${now}`,
+            content: text,
+            isUser: true,
+            timestamp: new Date(),
+          },
+          {
+            id: `sys_${now}`,
             content: '✅ Sugestão enviada. Obrigado! Um administrador irá revisar.',
             isUser: false,
             isSystem: true,
