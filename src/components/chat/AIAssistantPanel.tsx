@@ -357,11 +357,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     if (!conversationId) return;
 
     const checkConversationStatus = async () => {
-      const { data } = await supabase
-        .from('chat_conversations')
-        .select('ai_enabled, status')
-        .eq('id', conversationId)
-        .single();
+      const { data: rows } = await (supabase as any).rpc('get_chat_conversation_state', { p_id: conversationId });
+      const data = Array.isArray(rows) ? rows[0] : null;
+
       
       if (data) {
         // Detectar conversa encerrada pelo agente
