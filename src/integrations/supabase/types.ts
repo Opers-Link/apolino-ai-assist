@@ -706,6 +706,63 @@ export type Database = {
           },
         ]
       }
+      user_refinement_suggestions: {
+        Row: {
+          context: string | null
+          conversation_id: string | null
+          created_at: string
+          external_user_id: string | null
+          id: string
+          promoted_refinement_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          suggestion: string
+          updated_at: string
+        }
+        Insert: {
+          context?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          external_user_id?: string | null
+          id?: string
+          promoted_refinement_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggestion: string
+          updated_at?: string
+        }
+        Update: {
+          context?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          external_user_id?: string | null
+          id?: string
+          promoted_refinement_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggestion?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_refinement_suggestions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_refinement_suggestions_promoted_refinement_id_fkey"
+            columns: ["promoted_refinement_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_refinements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

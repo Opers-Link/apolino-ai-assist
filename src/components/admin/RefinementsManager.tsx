@@ -9,7 +9,16 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, AlertTriangle, CheckCircle, Shield, Lightbulb } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, CheckCircle, Shield, Lightbulb, MessageSquarePlus, Check, X } from 'lucide-react';
+
+interface UserSuggestion {
+  id: string;
+  suggestion: string;
+  context: string | null;
+  status: string;
+  created_at: string;
+  external_user_id: string | null;
+}
 
 interface Refinement {
   id: string;
@@ -37,10 +46,13 @@ export function RefinementsManager() {
   const [newPriority, setNewPriority] = useState(0);
   const [newModuleHint, setNewModuleHint] = useState('');
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
+  const [suggestionFilter, setSuggestionFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const { toast } = useToast();
 
   useEffect(() => {
     loadRefinements();
+    loadSuggestions();
   }, []);
 
   const loadRefinements = async () => {
@@ -59,6 +71,84 @@ export function RefinementsManager() {
       setLoading(false);
     }
   };
+
+  const loadSuggestions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_refinement_suggestions')
+        .select('id, suggestion, context, status, created_at, external_user_id')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setSuggestions(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar sugestões:', error);
+    }
+  };
+
+  const handleApproveSuggestion = async (s: UserSuggestion) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: inserted, error: insertError } = await supabase
+        .from('prompt_refinements')
+        .insert({
+          instruction: s.suggestion,
+          category: 'correção',
+          priority: 0,
+          created_by: user?.id || null,
+        })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+
+      const { error: updateError } = await supabase
+        .from('user_refinement_suggestions')
+        .update({
+          status: 'approved',
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+          promoted_refinement_id: inserted?.id || null,
+        })
+        .eq('id', s.id);
+      if (updateError) throw updateError;
+
+      toast({ title: 'Sugestão aprovada', description: 'Convertida em instrução de refinamento ativa.' });
+      loadRefinements();
+      loadSuggestions();
+    } catch (error) {
+      console.error('Erro ao aprovar sugestão:', error);
+      toast({ title: 'Erro', description: 'Não foi possível aprovar a sugestão.', variant: 'destructive' });
+    }
+  };
+
+  const handleRejectSuggestion = async (id: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('user_refinement_suggestions')
+        .update({
+          status: 'rejected',
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+      if (error) throw error;
+      loadSuggestions();
+      toast({ title: 'Sugestão rejeitada' });
+    } catch (error) {
+      console.error('Erro ao rejeitar sugestão:', error);
+    }
+  };
+
+  const handleDeleteSuggestion = async (id: string) => {
+    try {
+      const { error } = await supabase.from('user_refinement_suggestions').delete().eq('id', id);
+      if (error) throw error;
+      setSuggestions(prev => prev.filter(s => s.id !== id));
+    } catch (error) {
+      console.error('Erro ao remover sugestão:', error);
+    }
+  };
+
 
   const handleAdd = async () => {
     if (!newInstruction.trim()) return;
@@ -266,6 +356,101 @@ export function RefinementsManager() {
           })}
         </div>
       )}
+
+      {/* Sugestões dos usuários */}
+      <div className="pt-6 border-t border-apolar-blue/10">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-apolar-blue flex items-center gap-2">
+              <MessageSquarePlus className="h-5 w-5" />
+              Refinamentos Sugeridos pelo Usuário
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Sugestões enviadas pelos usuários via chat. Aprove para transformar em instrução ativa.
+            </p>
+          </div>
+          <Select value={suggestionFilter} onValueChange={(v: any) => setSuggestionFilter(v)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pendentes ({suggestions.filter(s => s.status === 'pending').length})</SelectItem>
+              <SelectItem value="approved">Aprovadas</SelectItem>
+              <SelectItem value="rejected">Rejeitadas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {suggestions.filter(s => s.status === suggestionFilter).length === 0 ? (
+          <Card className="bg-white/60">
+            <CardContent className="py-6 text-center text-sm text-muted-foreground">
+              Nenhuma sugestão {suggestionFilter === 'pending' ? 'pendente' : suggestionFilter === 'approved' ? 'aprovada' : 'rejeitada'}.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {suggestions.filter(s => s.status === suggestionFilter).map((s) => (
+              <Card key={s.id} className="bg-white/60">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm whitespace-pre-wrap">{s.suggestion}</p>
+                      {s.context && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-apolar-blue">
+                            Ver contexto da conversa
+                          </summary>
+                          <pre className="text-xs bg-muted/50 p-2 rounded mt-1 whitespace-pre-wrap font-sans">{s.context}</pre>
+                        </details>
+                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {new Date(s.created_at).toLocaleString('pt-BR')}
+                        </Badge>
+                        {s.external_user_id && (
+                          <Badge variant="outline" className="text-xs">user: {s.external_user_id}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {s.status === 'pending' ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                          onClick={() => handleApproveSuggestion(s)}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          Aprovar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1 text-red-700 border-red-300 hover:bg-red-50"
+                          onClick={() => handleRejectSuggestion(s.id)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Rejeitar
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteSuggestion(s.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+

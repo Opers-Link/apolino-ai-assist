@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, Calculator, Lightbulb } from 'lucide-react';
+import { X, Menu, Send, Sparkles, Ticket, Headphones, CheckCircle, Calculator, Lightbulb, MessageSquarePlus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,6 +39,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   const [lastActivityTime, setLastActivityTime] = useState<Date>(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [refinementOpen, setRefinementOpen] = useState(false);
+  const [refinementText, setRefinementText] = useState('');
+  const [sendingRefinement, setSendingRefinement] = useState(false);
   
   
   const MAX_MESSAGES = 200;
@@ -46,6 +50,34 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
 
   const handleOpenTicket = () => {
     window.open(MOVIDESK_URL, '_blank');
+  };
+
+  const handleSubmitRefinement = async () => {
+    const text = refinementText.trim();
+    if (text.length < 5) {
+      toast({ title: 'Descrição muito curta', description: 'Descreva o ajuste com pelo menos 5 caracteres.', variant: 'destructive' });
+      return;
+    }
+    setSendingRefinement(true);
+    try {
+      // Contexto: últimas 2 mensagens
+      const lastMsgs = messages.slice(-2).map(m => `${m.isUser ? 'Usuário' : 'AIA'}: ${m.content}`).join('\n');
+      const { error } = await supabase.from('user_refinement_suggestions').insert({
+        suggestion: text,
+        context: lastMsgs || null,
+        conversation_id: conversationId || null,
+        external_user_id: externalUserId || null,
+      });
+      if (error) throw error;
+      toast({ title: 'Sugestão enviada', description: 'Obrigado! Um administrador irá revisar sua sugestão.' });
+      setRefinementText('');
+      setRefinementOpen(false);
+    } catch (err) {
+      console.error('Erro ao enviar refinamento:', err);
+      toast({ title: 'Erro', description: 'Não foi possível enviar sua sugestão.', variant: 'destructive' });
+    } finally {
+      setSendingRefinement(false);
+    }
   };
 
   // Recuperar conversa existente ao abrir o chat (sem criar nova)
@@ -894,6 +926,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               <Ticket className="h-4 w-4" />
               Abrir ticket
             </Button>
+            <Button
+              onClick={() => setRefinementOpen(true)}
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 border-apolar-gold/60 text-apolar-blue hover:bg-apolar-gold/10 transition-all"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              Refinamento
+            </Button>
             {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
@@ -923,6 +964,36 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
           </p>
         </div>
       </div>
+
+      <Dialog open={refinementOpen} onOpenChange={setRefinementOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-apolar-blue">
+              <MessageSquarePlus className="h-5 w-5" />
+              Sugerir refinamento
+            </DialogTitle>
+            <DialogDescription>
+              Encontrou uma resposta incorreta ou incompleta? Descreva o ajuste que a AIA deveria fazer. Sua sugestão será revisada por um administrador.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={refinementText}
+            onChange={(e) => setRefinementText(e.target.value)}
+            placeholder="Ex: Ao falar sobre comissão de locação, o valor correto é X%, não Y% como foi informado."
+            className="min-h-[120px]"
+            maxLength={2000}
+          />
+          <p className="text-[11px] text-muted-foreground text-right">{refinementText.length}/2000</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefinementOpen(false)} disabled={sendingRefinement}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmitRefinement} disabled={sendingRefinement || refinementText.trim().length < 5}>
+              {sendingRefinement ? 'Enviando...' : 'Enviar sugestão'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
