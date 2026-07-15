@@ -926,6 +926,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
               <Ticket className="h-4 w-4" />
               Abrir ticket
             </Button>
+            <Button
+              onClick={() => setRefinementOpen(true)}
+              variant="outline"
+              size="sm"
+              className="flex-1 gap-2 border-apolar-gold/60 text-apolar-blue hover:bg-apolar-gold/10 transition-all"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              Refinamento
+            </Button>
             {/* Simulador temporariamente oculto
             <Button
               onClick={() => window.open('/simulador', '_blank')}
