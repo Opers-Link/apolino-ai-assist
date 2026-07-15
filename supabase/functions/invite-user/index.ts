@@ -25,7 +25,40 @@ serve(async (req) => {
       },
     });
 
+    // Auth: caller must be admin or gerente
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Token inválido' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const callerId = claimsData.claims.sub as string;
+    const { data: callerRoles } = await supabaseAdmin
+      .from('user_roles').select('role').eq('user_id', callerId);
+    const callerRoleSet = new Set((callerRoles || []).map((r: any) => r.role));
+    const isAdmin = callerRoleSet.has('admin');
+    const isGerente = callerRoleSet.has('gerente');
+    if (!isAdmin && !isGerente) {
+      return new Response(JSON.stringify({ error: 'Sem permissão' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { email, display_name, phone, mobile_phone, role } = await req.json();
+
+    // Gerentes só podem convidar agente/user, nunca admin/gerente
+    if (!isAdmin && role && (role === 'admin' || role === 'gerente')) {
+      return new Response(JSON.stringify({ error: 'Gerentes não podem atribuir esse tipo de acesso' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Validar email
     if (!email || !email.includes('@')) {

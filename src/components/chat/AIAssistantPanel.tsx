@@ -91,14 +91,11 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     try {
       // Se temos um externalUserId, buscar conversa ativa por ele (prioridade)
       if (externalUserId) {
-        const { data: externalConversation, error: extError } = await supabase
-          .from('chat_conversations')
-          .select('id, session_id, status, ai_enabled')
-          .eq('external_user_id', externalUserId)
-          .in('status', ['active', 'needs_help', 'in_progress'])
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .single();
+        const { data: extRows, error: extError } = await (supabase as any).rpc(
+          'find_active_conversation_by_external_user',
+          { p_external_user_id: externalUserId }
+        );
+        const externalConversation = Array.isArray(extRows) ? extRows[0] : null;
 
         if (!extError && externalConversation) {
           setConversationId(externalConversation.id);
@@ -112,16 +109,15 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
 
       // Fallback: tentar recuperar conversa ativa do localStorage
       const storedConversationId = localStorage.getItem('aia_conversation_id');
-      
-      if (storedConversationId) {
-        const { data: existingConversation, error } = await supabase
-          .from('chat_conversations')
-          .select('id, session_id, status, ai_enabled')
-          .eq('id', storedConversationId)
-          .in('status', ['active', 'needs_help', 'in_progress'])
-          .single();
 
-        if (!error && existingConversation) {
+      if (storedConversationId) {
+        const { data: rows, error } = await (supabase as any).rpc(
+          'get_chat_conversation_state',
+          { p_id: storedConversationId }
+        );
+        const existingConversation = Array.isArray(rows) ? rows[0] : null;
+
+        if (!error && existingConversation && ['active','needs_help','in_progress'].includes(existingConversation.status)) {
           setConversationId(existingConversation.id);
           setSessionId(existingConversation.session_id);
           setAiDisabled(existingConversation.ai_enabled === false || existingConversation.status === 'in_progress');
@@ -164,37 +160,33 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
   const createConversation = async (sid: string): Promise<string | null> => {
     try {
       const userAgent = navigator.userAgent;
-      
+      const newId = crypto.randomUUID();
+
       const insertData: any = {
+        id: newId,
         session_id: sid,
         user_agent: userAgent,
         status: 'active',
         total_messages: 0,
       };
-      
+
       // Vincular ao usuário externo se disponível
       if (externalUserId) {
         insertData.external_user_id = externalUserId;
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('chat_conversations')
-        .insert(insertData)
-        .select()
-        .single();
+        .insert(insertData);
 
       if (error) {
         console.error('Erro ao criar conversa:', error);
         return null;
       }
 
-      if (data) {
-        setConversationId(data.id);
-        // Salvar no localStorage para recuperação
-        localStorage.setItem('aia_conversation_id', data.id);
-        return data.id;
-      }
-      return null;
+      setConversationId(newId);
+      localStorage.setItem('aia_conversation_id', newId);
+      return newId;
     } catch (error) {
       console.error('Erro ao criar conversa:', error);
       return null;
@@ -209,9 +201,8 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     }
 
     try {
-      // Gerar UUID no cliente para evitar dependência da política de SELECT
       const messageId = crypto.randomUUID();
-      
+
       const { error } = await supabase
         .from('chat_messages')
         .insert({
@@ -227,13 +218,10 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
         return null;
       }
 
-      await supabase
-        .from('chat_conversations')
-        .update({ 
-          total_messages: messageOrder,
-          status: 'active'
-        })
-        .eq('id', targetConversationId);
+      await (supabase as any).rpc('chat_conversation_bump_activity', {
+        p_id: targetConversationId,
+        p_total: messageOrder,
+      });
 
       return messageId;
     } catch (error) {
@@ -246,32 +234,21 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     if (!conversationId) return;
 
     try {
-      // Verificar status atual da conversa
-      const { data } = await supabase
-        .from('chat_conversations')
-        .select('status, human_requested_at')
-        .eq('id', conversationId)
-        .single();
+      // Verificar status atual da conversa via RPC segura
+      const { data: rows } = await (supabase as any).rpc('get_chat_conversation_state', { p_id: conversationId });
+      const data = Array.isArray(rows) ? rows[0] : null;
 
       // NÃO finalizar se está aguardando ou em atendimento humano (exceto se forçar)
       if (!forceFinish && data && (
-        data.status === 'needs_help' || 
-        data.status === 'in_progress' || 
+        data.status === 'needs_help' ||
+        data.status === 'in_progress' ||
         data.human_requested_at
       )) {
-        // Manter a conversa para o usuário poder voltar
         return;
       }
 
-      await supabase
-        .from('chat_conversations')
-        .update({ 
-          ended_at: new Date().toISOString(),
-          status: 'finished'
-        })
-        .eq('id', conversationId);
+      await (supabase as any).rpc('chat_conversation_finish', { p_id: conversationId });
 
-      // Limpar localStorage apenas se finalizou
       localStorage.removeItem('aia_conversation_id');
     } catch (error) {
       console.error('Erro ao finalizar conversa:', error);
@@ -289,14 +266,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     }
   
     try {
-      await supabase
-        .from('chat_conversations')
-        .update({
-          status: 'needs_help',
-          human_requested_at: new Date().toISOString(),
-          tags: ['humano_solicitado']
-        })
-        .eq('id', conversationId);
+      await (supabase as any).rpc('chat_conversation_request_human', { p_id: conversationId });
   
       const systemMessage: Message = {
         id: Date.now().toString(),
@@ -387,11 +357,9 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     if (!conversationId) return;
 
     const checkConversationStatus = async () => {
-      const { data } = await supabase
-        .from('chat_conversations')
-        .select('ai_enabled, status')
-        .eq('id', conversationId)
-        .single();
+      const { data: rows } = await (supabase as any).rpc('get_chat_conversation_state', { p_id: conversationId });
+      const data = Array.isArray(rows) ? rows[0] : null;
+
       
       if (data) {
         // Detectar conversa encerrada pelo agente
@@ -442,21 +410,12 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
 
       if (timeSinceLastActivity >= INACTIVITY_TIMEOUT_MS) {
         // Verificar se NÃO solicitou atendimento humano
-        const { data } = await supabase
-          .from('chat_conversations')
-          .select('status, human_requested_at')
-          .eq('id', conversationId)
-          .single();
+        const { data: rows } = await (supabase as any).rpc('get_chat_conversation_state', { p_id: conversationId });
+        const data = Array.isArray(rows) ? rows[0] : null;
 
         // Só inativar se NÃO solicitou humano
         if (data && !data.human_requested_at && data.status !== 'needs_help' && data.status !== 'in_progress') {
-          await supabase
-            .from('chat_conversations')
-            .update({
-              status: 'inactive'
-              // NÃO define ended_at - reservado para atendimentos humanos finalizados
-            })
-            .eq('id', conversationId);
+          await (supabase as any).rpc('chat_conversation_mark_inactive', { p_id: conversationId });
 
           // Limpar localStorage ao inativar
           localStorage.removeItem('aia_conversation_id');

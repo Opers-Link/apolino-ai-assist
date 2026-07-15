@@ -99,6 +99,28 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Escapar HTML para evitar injeção
+    const escapeHtml = (s: unknown): string => {
+      if (s === null || s === undefined) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+    const safeNumber = (v: unknown): number => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const safeMetrics: MetricsData | undefined = metrics ? {
+      totalConversations: safeNumber((metrics as any).totalConversations),
+      totalMessages: safeNumber((metrics as any).totalMessages),
+      activeConversations: safeNumber((metrics as any).activeConversations),
+      aiRequests: safeNumber((metrics as any).aiRequests),
+      avgAiRequestsPerConversation: safeNumber((metrics as any).avgAiRequestsPerConversation),
+    } : undefined;
+
     // Buscar insight da tabela correta
     const tableName = insight_type === 'conversation' ? 'conversation_insights' : 'manual_insights';
     const { data: insight, error: insightError } = await supabaseAdmin
@@ -128,9 +150,9 @@ const handler = async (req: Request): Promise<Response> => {
       ? `${new Date(insight.period_start).toLocaleDateString('pt-BR')} a ${new Date(insight.period_end).toLocaleDateString('pt-BR')}`
       : 'Período não especificado';
 
-    // Título e descrição - compatível com ambos os tipos
-    const insightTitle = insight.title || `Insights de Conversas - ${periodText}`;
-    const insightDescription = insight.description || 'Relatório de Insights gerado automaticamente';
+    // Título e descrição - compatível com ambos os tipos (escapados)
+    const insightTitle = escapeHtml(insight.title || `Insights de Conversas - ${periodText}`);
+    const insightDescription = escapeHtml(insight.description || 'Relatório de Insights gerado automaticamente');
     const generatedAt = insight.generated_at || new Date().toISOString();
 
     // Gerar HTML do e-mail
@@ -187,7 +209,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     <div class="content">
       <!-- Métricas do Período -->
-      ${metrics ? `
+      ${safeMetrics ? `
       <div class="section">
         <div class="section-title">📈 Métricas do Período</div>
         <table>
@@ -197,23 +219,23 @@ const handler = async (req: Request): Promise<Response> => {
           </tr>
           <tr>
             <td>Total de Conversas</td>
-            <td><strong>${metrics.totalConversations}</strong></td>
+            <td><strong>${safeMetrics.totalConversations}</strong></td>
           </tr>
           <tr>
             <td>Total de Mensagens</td>
-            <td><strong>${metrics.totalMessages}</strong></td>
+            <td><strong>${safeMetrics.totalMessages}</strong></td>
           </tr>
           <tr>
             <td>Conversas Ativas</td>
-            <td><strong>${metrics.activeConversations}</strong></td>
+            <td><strong>${safeMetrics.activeConversations}</strong></td>
           </tr>
           <tr>
             <td>Requisições de IA</td>
-            <td><strong>${metrics.aiRequests}</strong></td>
+            <td><strong>${safeMetrics.aiRequests}</strong></td>
           </tr>
           <tr>
             <td>Requisições por Conversa</td>
-            <td><strong>${metrics.avgAiRequestsPerConversation}</strong></td>
+            <td><strong>${safeMetrics.avgAiRequestsPerConversation}</strong></td>
           </tr>
         </table>
       </div>
@@ -223,7 +245,7 @@ const handler = async (req: Request): Promise<Response> => {
       <div class="section">
         <div class="section-title">📋 Resumo Executivo</div>
         <div class="summary-box">
-          <p>${insightsData.summary}</p>
+          <p>${escapeHtml(insightsData.summary)}</p>
         </div>
       </div>
 
@@ -239,9 +261,9 @@ const handler = async (req: Request): Promise<Response> => {
           </tr>
           ${insightsData.top_topics.map(topic => `
           <tr>
-            <td>${topic.topic}</td>
-            <td>${topic.count}</td>
-            <td><strong>${topic.percentage}%</strong></td>
+            <td>${escapeHtml(topic.topic)}</td>
+            <td>${safeNumber(topic.count)}</td>
+            <td><strong>${safeNumber(topic.percentage)}%</strong></td>
           </tr>
           `).join('')}
         </table>
@@ -258,13 +280,15 @@ const handler = async (req: Request): Promise<Response> => {
             <th>Frequência</th>
             <th>Severidade</th>
           </tr>
-          ${insightsData.recurring_issues.map(issue => `
+          ${insightsData.recurring_issues.map(issue => {
+            const sev = ['high','medium','low'].includes(String(issue.severity)) ? String(issue.severity) : 'low';
+            return `
           <tr>
-            <td>${issue.issue}</td>
-            <td>${issue.frequency}x</td>
-            <td><span class="badge badge-${issue.severity}">${issue.severity === 'high' ? 'Alta' : issue.severity === 'medium' ? 'Média' : 'Baixa'}</span></td>
-          </tr>
-          `).join('')}
+            <td>${escapeHtml(issue.issue)}</td>
+            <td>${safeNumber(issue.frequency)}x</td>
+            <td><span class="badge badge-${sev}">${sev === 'high' ? 'Alta' : sev === 'medium' ? 'Média' : 'Baixa'}</span></td>
+          </tr>`;
+          }).join('')}
         </table>
       </div>
       ` : ''}
@@ -275,8 +299,8 @@ const handler = async (req: Request): Promise<Response> => {
         <div class="section-title">🎯 Oportunidades de Melhoria</div>
         ${insightsData.operational_gaps.map(gap => `
         <div class="gap-item">
-          <strong>${gap.gap}</strong>
-          <div class="recommendation">💡 ${gap.recommendation}</div>
+          <strong>${escapeHtml(gap.gap)}</strong>
+          <div class="recommendation">💡 ${escapeHtml(gap.recommendation)}</div>
         </div>
         `).join('')}
       </div>
@@ -287,14 +311,14 @@ const handler = async (req: Request): Promise<Response> => {
       <div class="section">
         <div class="section-title">😊 Análise de Sentimento</div>
         <div class="sentiment-bar">
-          <div class="sentiment-positive" style="width: ${insightsData.sentiment_analysis.positive}%"></div>
-          <div class="sentiment-neutral" style="width: ${insightsData.sentiment_analysis.neutral}%"></div>
-          <div class="sentiment-negative" style="width: ${insightsData.sentiment_analysis.negative}%"></div>
+          <div class="sentiment-positive" style="width: ${safeNumber(insightsData.sentiment_analysis.positive)}%"></div>
+          <div class="sentiment-neutral" style="width: ${safeNumber(insightsData.sentiment_analysis.neutral)}%"></div>
+          <div class="sentiment-negative" style="width: ${safeNumber(insightsData.sentiment_analysis.negative)}%"></div>
         </div>
         <div class="sentiment-legend">
-          <span><span class="dot" style="background: #22c55e"></span> Positivo: ${insightsData.sentiment_analysis.positive}%</span>
-          <span><span class="dot" style="background: #94a3b8"></span> Neutro: ${insightsData.sentiment_analysis.neutral}%</span>
-          <span><span class="dot" style="background: #ef4444"></span> Negativo: ${insightsData.sentiment_analysis.negative}%</span>
+          <span><span class="dot" style="background: #22c55e"></span> Positivo: ${safeNumber(insightsData.sentiment_analysis.positive)}%</span>
+          <span><span class="dot" style="background: #94a3b8"></span> Neutro: ${safeNumber(insightsData.sentiment_analysis.neutral)}%</span>
+          <span><span class="dot" style="background: #ef4444"></span> Negativo: ${safeNumber(insightsData.sentiment_analysis.negative)}%</span>
         </div>
       </div>
       ` : ''}
@@ -303,17 +327,21 @@ const handler = async (req: Request): Promise<Response> => {
       ${insightsData.trends && insightsData.trends.length > 0 ? `
       <div class="section">
         <div class="section-title">📈 Tendências Identificadas</div>
-        ${insightsData.trends.map(trend => `
+        ${insightsData.trends.map(trend => {
+          const dir = ['up','down','stable'].includes(String(trend.direction)) ? String(trend.direction) : 'stable';
+          return `
         <div class="trend-item">
-          <span class="trend-${trend.direction}">${trend.direction === 'up' ? '↗' : trend.direction === 'down' ? '↘' : '→'}</span>
+          <span class="trend-${dir}">${dir === 'up' ? '↗' : dir === 'down' ? '↘' : '→'}</span>
           <div>
-            <strong>${trend.trend}</strong>
-            <div style="color: #666; font-size: 12px;">${trend.change}</div>
+            <strong>${escapeHtml(trend.trend)}</strong>
+            <div style="color: #666; font-size: 12px;">${escapeHtml(trend.change)}</div>
           </div>
-        </div>
-        `).join('')}
+        </div>`;
+        }).join('')}
       </div>
       ` : ''}
+    </div>
+
     </div>
 
     <div class="footer">
@@ -329,7 +357,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Apolar Insights <onboarding@resend.dev>",
       to: recipients.map(e => e.trim()),
-      subject: `📊 ${insightTitle}`,
+      subject: `📊 ${String(insight.title || `Insights de Conversas - ${periodText}`).slice(0, 200)}`,
       html: emailHtml,
     });
 

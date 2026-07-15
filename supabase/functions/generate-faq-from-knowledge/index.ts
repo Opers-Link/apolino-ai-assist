@@ -12,14 +12,47 @@ serve(async (req) => {
   }
 
   try {
-    const { module_id, question_count = 10 } = await req.json();
+    const supabaseUrlEarly = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKeyEarly = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAuth = createClient(supabaseUrlEarly, supabaseServiceKeyEarly);
 
-    if (!module_id) {
+    // Auth: admin ou gerente
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autenticado' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Token inválido' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const callerId = claimsData.claims.sub as string;
+    const { data: callerRoles } = await supabaseAuth
+      .from('user_roles').select('role').eq('user_id', callerId);
+    const roleSet = new Set((callerRoles || []).map((r: any) => r.role));
+    if (!roleSet.has('admin') && !roleSet.has('gerente')) {
+      return new Response(JSON.stringify({ error: 'Sem permissão' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { module_id, question_count: rawQuestionCount = 10 } = await req.json();
+
+    // Validar module_id como UUID
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!module_id || !uuidRe.test(String(module_id))) {
       return new Response(
-        JSON.stringify({ error: 'module_id é obrigatório' }),
+        JSON.stringify({ error: 'module_id inválido' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Limitar question_count entre 1 e 50
+    const question_count = Math.max(1, Math.min(50, Number(rawQuestionCount) || 10));
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
