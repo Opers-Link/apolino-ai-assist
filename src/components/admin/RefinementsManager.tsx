@@ -48,6 +48,12 @@ export function RefinementsManager() {
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [suggestionFilter, setSuggestionFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editInstruction, setEditInstruction] = useState('');
+  const [editCategory, setEditCategory] = useState('correção');
+  const [editPriority, setEditPriority] = useState(0);
+  const [editModuleHint, setEditModuleHint] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
