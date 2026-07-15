@@ -234,32 +234,21 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
     if (!conversationId) return;
 
     try {
-      // Verificar status atual da conversa
-      const { data } = await supabase
-        .from('chat_conversations')
-        .select('status, human_requested_at')
-        .eq('id', conversationId)
-        .single();
+      // Verificar status atual da conversa via RPC segura
+      const { data: rows } = await (supabase as any).rpc('get_chat_conversation_state', { p_id: conversationId });
+      const data = Array.isArray(rows) ? rows[0] : null;
 
       // NÃO finalizar se está aguardando ou em atendimento humano (exceto se forçar)
       if (!forceFinish && data && (
-        data.status === 'needs_help' || 
-        data.status === 'in_progress' || 
+        data.status === 'needs_help' ||
+        data.status === 'in_progress' ||
         data.human_requested_at
       )) {
-        // Manter a conversa para o usuário poder voltar
         return;
       }
 
-      await supabase
-        .from('chat_conversations')
-        .update({ 
-          ended_at: new Date().toISOString(),
-          status: 'finished'
-        })
-        .eq('id', conversationId);
+      await (supabase as any).rpc('chat_conversation_finish', { p_id: conversationId });
 
-      // Limpar localStorage apenas se finalizou
       localStorage.removeItem('aia_conversation_id');
     } catch (error) {
       console.error('Erro ao finalizar conversa:', error);
