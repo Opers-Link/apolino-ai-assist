@@ -875,7 +875,7 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
           </div>
           
           {/* CTAs destacados */}
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3 mb-2 items-stretch">
             <Button
               onClick={handleOpenTicket}
               variant="outline"
