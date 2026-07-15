@@ -876,14 +876,24 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
             </div>
           )}
           
-          <div className="relative bg-gray-50 rounded-2xl border border-gray-200 focus-within:border-apolar-blue/50 focus-within:ring-2 focus-within:ring-apolar-blue/10 transition-all">
+          <div className={cn(
+            "relative bg-gray-50 rounded-2xl border transition-all",
+            refinementMode
+              ? "border-apolar-gold ring-2 ring-apolar-gold/30 bg-apolar-gold/5"
+              : "border-gray-200 focus-within:border-apolar-blue/50 focus-within:ring-2 focus-within:ring-apolar-blue/10"
+          )}>
             <Textarea
               ref={textareaRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder={conversationClosed ? "Iniciar nova conversa..." : "Pedir para AIA"}
-              disabled={isLoading || isCreatingConversation}
+              placeholder={
+                refinementMode
+                  ? "Ex: Ao falar sobre comissão de locação, o valor correto é X%, não Y%…"
+                  : (conversationClosed ? "Iniciar nova conversa..." : "Pedir para AIA")
+              }
+              disabled={isLoading || isCreatingConversation || sendingRefinement}
+
               className="min-h-[52px] max-h-[120px] resize-none border-0 bg-transparent px-4 py-3 pr-20 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
               rows={1}
             />
