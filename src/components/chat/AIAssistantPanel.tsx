@@ -973,13 +973,14 @@ const AIAssistantPanel = ({ isOpen, onClose, isEmbedded = false, externalUserId 
             </Button>
             <Button
               onClick={toggleRefinementMode}
-              variant={refinementMode ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
+              aria-pressed={refinementMode}
               className={cn(
-                'flex-1 gap-2 transition-all',
+                'flex-1 gap-2 transition-all duration-200',
                 refinementMode
-                  ? 'bg-apolar-gold text-apolar-blue hover:bg-apolar-gold/90 border-apolar-gold shadow-md'
-                  : 'border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10'
+                  ? 'bg-apolar-gold text-apolar-blue border-apolar-gold shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] ring-2 ring-apolar-gold/40 ring-offset-1 ring-offset-background scale-[0.98] hover:bg-apolar-gold/90'
+                  : 'border-apolar-gold text-apolar-blue hover:bg-apolar-gold/10 hover:scale-[1.02]'
               )}
             >
               <MessageSquarePlus className="h-4 w-4" />
