@@ -357,7 +357,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "Apolar Insights <onboarding@resend.dev>",
       to: recipients.map(e => e.trim()),
-      subject: `📊 ${insightTitle}`,
+      subject: `📊 ${String(insight.title || `Insights de Conversas - ${periodText}`).slice(0, 200)}`,
       html: emailHtml,
     });
 
