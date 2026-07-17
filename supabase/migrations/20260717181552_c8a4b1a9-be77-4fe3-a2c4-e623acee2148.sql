@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Edge function can insert ai usage logs" ON public.ai_usage_logs;
