@@ -841,6 +841,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_chat_conversation_open: { Args: { p_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user" | "gerente" | "agente"
