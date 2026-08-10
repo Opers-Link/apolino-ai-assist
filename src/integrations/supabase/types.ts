@@ -23,6 +23,7 @@ export type Database = {
           cost_source: string | null
           created_at: string | null
           error_message: string | null
+          gateway_log_id: string | null
           gateway_run_id: string | null
           has_knowledge_modules: boolean | null
           id: string
@@ -40,6 +41,7 @@ export type Database = {
           cost_source?: string | null
           created_at?: string | null
           error_message?: string | null
+          gateway_log_id?: string | null
           gateway_run_id?: string | null
           has_knowledge_modules?: boolean | null
           id?: string
@@ -57,6 +59,7 @@ export type Database = {
           cost_source?: string | null
           created_at?: string | null
           error_message?: string | null
+          gateway_log_id?: string | null
           gateway_run_id?: string | null
           has_knowledge_modules?: boolean | null
           id?: string

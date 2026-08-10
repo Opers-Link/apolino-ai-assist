@@ -314,6 +314,7 @@ serve(async (req) => {
             completion_tokens: usageData?.completion_tokens || null,
             total_tokens: usageData?.total_tokens || null,
             gateway_run_id: gatewayRunId || null,
+            gateway_log_id: gatewayLogId || null,
             cost_credits: hasRealCost ? parsedCostCredits : null,
             cost_brl: parsedCostBrl && !isNaN(parsedCostBrl) ? parsedCostBrl : null,
             cost_source: hasRealCost ? 'gateway' : 'estimated',

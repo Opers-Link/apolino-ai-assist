@@ -91,11 +91,14 @@ const Admin = () => {
   const [aiCost, setAiCost] = useState<AiCostSummary>({
     totalCostUsd: 0,
     totalCostBrl: 0,
+    totalCostCredits: 0,
     promptTokens: 0,
     completionTokens: 0,
     totalTokens: 0,
     requestsWithUsage: 0,
     requestsWithoutUsage: 0,
+    realRequests: 0,
+    estimatedRequests: 0,
     byModel: [],
   });
   const [loading, setLoading] = useState(true);
@@ -239,12 +242,21 @@ const Admin = () => {
           convTotal > 0 ? Math.round(((aiRequestsCount || 0) / convTotal) * 10) / 10 : 0,
       });
 
-      // Custo de IA: somar tokens por modelo (paginado)
-      const usageRows: { model: string | null; prompt_tokens: number | null; completion_tokens: number | null }[] = [];
+      // Custo de IA: somar tokens e custos reais por modelo (paginado)
+      const usageRows: {
+        model: string | null;
+        prompt_tokens: number | null;
+        completion_tokens: number | null;
+        cost_credits: number | null;
+        cost_brl: number | null;
+        cost_source: string | null;
+      }[] = [];
       {
         let usageFrom = 0;
         while (true) {
-          let uq = supabase.from('ai_usage_logs').select('model, prompt_tokens, completion_tokens');
+          let uq = supabase
+            .from('ai_usage_logs')
+            .select('model, prompt_tokens, completion_tokens, cost_credits, cost_brl, cost_source');
           if (startDate && endDate) {
             uq = uq
               .gte('created_at', startDate.toISOString())
