@@ -86,6 +86,16 @@ const Admin = () => {
   });
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [tagStats, setTagStats] = useState<TagStats[]>([]);
+  const [aiCost, setAiCost] = useState<AiCostSummary>({
+    totalCostUsd: 0,
+    totalCostBrl: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    requestsWithUsage: 0,
+    requestsWithoutUsage: 0,
+    byModel: [],
+  });
   const [loading, setLoading] = useState(true);
   const [agentNotes, setAgentNotes] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
