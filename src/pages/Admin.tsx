@@ -91,11 +91,14 @@ const Admin = () => {
   const [aiCost, setAiCost] = useState<AiCostSummary>({
     totalCostUsd: 0,
     totalCostBrl: 0,
+    totalCostCredits: 0,
     promptTokens: 0,
     completionTokens: 0,
     totalTokens: 0,
     requestsWithUsage: 0,
     requestsWithoutUsage: 0,
+    realRequests: 0,
+    estimatedRequests: 0,
     byModel: [],
   });
   const [loading, setLoading] = useState(true);
