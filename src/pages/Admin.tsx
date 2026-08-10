@@ -186,101 +186,96 @@ const Admin = () => {
 
   const loadStats = async (startDate: Date | null = null, endDate: Date | null = null) => {
     try {
-      const { data: conversationsData } = await supabase
-        .from('chat_conversations')
-        .select('*');
+      const applyConvDate = (q: any) =>
+        startDate && endDate
+          ? q.gte('started_at', startDate.toISOString()).lte('started_at', endDate.toISOString())
+          : q;
 
-      const { data: messagesData } = await supabase
-        .from('chat_messages')
-        .select('*');
+      // Contagens direto no banco (evita o limite de 1000 linhas do PostgREST)
+      const [{ count: totalConversations }, { count: activeConversations }, { count: totalMessages }] =
+        await Promise.all([
+          applyConvDate(supabase.from('chat_conversations').select('*', { count: 'exact', head: true })),
+          applyConvDate(
+            supabase.from('chat_conversations').select('*', { count: 'exact', head: true }).eq('status', 'active')
+          ),
+          (() => {
+            let q = supabase.from('chat_messages').select('*', { count: 'exact', head: true });
+            if (startDate && endDate) {
+              q = q.gte('timestamp', startDate.toISOString()).lte('timestamp', endDate.toISOString());
+            }
+            return q;
+          })(),
+        ]);
 
-      // Buscar requisições de IA
-      let aiQuery = supabase
-        .from('ai_usage_logs')
-        .select('*', { count: 'exact' });
-      
+      // Requisições de IA
+      let aiQuery = supabase.from('ai_usage_logs').select('*', { count: 'exact', head: true });
       if (startDate && endDate) {
         aiQuery = aiQuery
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString());
       }
-      
       const { count: aiRequestsCount } = await aiQuery;
 
-      if (conversationsData && messagesData) {
-        // Filter by date range if provided
-        const filteredConversations = startDate && endDate
-          ? conversationsData.filter(conv => {
-              const convDate = new Date(conv.started_at);
-              return isWithinInterval(convDate, { start: startDate, end: endDate });
-            })
-          : conversationsData;
-        const totalConversations = filteredConversations.length;
-        const activeConversations = filteredConversations.filter(c => c.status === 'active').length;
-        
-        // Filter messages based on filtered conversations
-        const filteredConversationIds = new Set(filteredConversations.map(c => c.id));
-        const filteredMessages = messagesData.filter(m => filteredConversationIds.has(m.conversation_id));
-        const totalMessages = filteredMessages.length;
+      const convTotal = totalConversations || 0;
 
-        const avgAiRequestsPerConversation = totalConversations > 0 
-          ? Math.round((aiRequestsCount || 0) / totalConversations * 10) / 10
-          : 0;
+      setStats({
+        totalConversations: convTotal,
+        totalMessages: totalMessages || 0,
+        activeConversations: activeConversations || 0,
+        aiRequests: aiRequestsCount || 0,
+        avgAiRequestsPerConversation:
+          convTotal > 0 ? Math.round(((aiRequestsCount || 0) / convTotal) * 10) / 10 : 0,
+      });
 
-        setStats({
-          totalConversations,
-          totalMessages,
-          activeConversations,
-          aiRequests: aiRequestsCount || 0,
-          avgAiRequestsPerConversation
-        });
+      // Categorias e tags: buscar apenas colunas necessárias, paginando
+      const pageSize = 1000;
+      let from = 0;
+      const light: { category: string | null; tags: string[] | null }[] = [];
+      while (true) {
+        const { data, error } = await applyConvDate(
+          supabase.from('chat_conversations').select('category, tags')
+        ).range(from, from + pageSize - 1);
+        if (error) throw error;
+        light.push(...((data as any[]) || []));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
 
-        // Calcular estatísticas por categoria
-        const categoryCounts = filteredConversations.reduce((acc: Record<string, number>, conv) => {
-          const category = conv.category || 'outros';
-          acc[category] = (acc[category] || 0) + 1;
-          return acc;
-        }, {});
+      const categoryCounts = light.reduce((acc: Record<string, number>, conv) => {
+        const category = conv.category || 'outros';
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      }, {});
 
-        const categoryStatsData = Object.entries(categoryCounts).map(([category, count]) => ({
+      setCategoryStats(
+        Object.entries(categoryCounts).map(([category, count]) => ({
           category,
           count,
-          percentage: Math.round((count / totalConversations) * 100)
-        }));
+          percentage: light.length > 0 ? Math.round((count / light.length) * 100) : 0,
+        }))
+      );
 
-        setCategoryStats(categoryStatsData);
-
-        // Calcular estatísticas de tags por categoria
-        const tagCounts: Record<string, { count: number; categories: Set<string> }> = {};
-        
-        filteredConversations.forEach(conv => {
-          const category = conv.category || 'outros';
-          const tags = conv.tags || [];
-          
-          tags.forEach(tag => {
-            if (!tagCounts[tag]) {
-              tagCounts[tag] = { count: 0, categories: new Set() };
-            }
-            tagCounts[tag].count += 1;
-            tagCounts[tag].categories.add(category);
-          });
+      const tagCounts: Record<string, { count: number; categories: Set<string> }> = {};
+      light.forEach((conv) => {
+        const category = conv.category || 'outros';
+        (conv.tags || []).forEach((tag) => {
+          if (!tagCounts[tag]) tagCounts[tag] = { count: 0, categories: new Set() };
+          tagCounts[tag].count += 1;
+          tagCounts[tag].categories.add(category);
         });
+      });
 
-        const tagStatsData = Object.entries(tagCounts)
-          .map(([tag, data]) => ({
-            tag,
-            count: data.count,
-            category: Array.from(data.categories).join(', ')
-          }))
+      setTagStats(
+        Object.entries(tagCounts)
+          .map(([tag, data]) => ({ tag, count: data.count, category: Array.from(data.categories).join(', ') }))
           .sort((a, b) => b.count - a.count)
-          .slice(0, 10); // Top 10 tags
-
-        setTagStats(tagStatsData);
-      }
+          .slice(0, 10)
+      );
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     }
   };
+
 
   const loadConversations = async (startDate: Date | null = null, endDate: Date | null = null) => {
     try {
