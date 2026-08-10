@@ -18,8 +18,12 @@ export type Database = {
         Row: {
           completion_tokens: number | null
           conversation_id: string | null
+          cost_brl: number | null
+          cost_credits: number | null
+          cost_source: string | null
           created_at: string | null
           error_message: string | null
+          gateway_run_id: string | null
           has_knowledge_modules: boolean | null
           id: string
           model: string | null
@@ -31,8 +35,12 @@ export type Database = {
         Insert: {
           completion_tokens?: number | null
           conversation_id?: string | null
+          cost_brl?: number | null
+          cost_credits?: number | null
+          cost_source?: string | null
           created_at?: string | null
           error_message?: string | null
+          gateway_run_id?: string | null
           has_knowledge_modules?: boolean | null
           id?: string
           model?: string | null
@@ -44,8 +52,12 @@ export type Database = {
         Update: {
           completion_tokens?: number | null
           conversation_id?: string | null
+          cost_brl?: number | null
+          cost_credits?: number | null
+          cost_source?: string | null
           created_at?: string | null
           error_message?: string | null
+          gateway_run_id?: string | null
           has_knowledge_modules?: boolean | null
           id?: string
           model?: string | null
