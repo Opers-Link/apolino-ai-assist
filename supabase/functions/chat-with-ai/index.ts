@@ -278,6 +278,13 @@ serve(async (req) => {
 
     console.log(`Modules loaded: ${classificationMethod === 'none' ? 'NONE (GPT knowledge only)' : modulesUsed.join(', ')} (method: ${classificationMethod})`);
 
+    // Capturar headers do gateway para rastreamento de custo real
+    const gatewayRunId = response.headers.get('X-Lovable-AIG-Run-ID');
+    const gatewayLogId = response.headers.get('X-Lovable-AIG-Log-ID');
+    const gatewayCostCredits = response.headers.get('X-Lovable-AIG-Cost-Credits');
+    const gatewayCostBrl = response.headers.get('X-Lovable-AIG-Cost-BRL');
+    console.log('Gateway headers:', { gatewayRunId, gatewayLogId, gatewayCostCredits, gatewayCostBrl });
+
     // Intercept stream to extract usage data from the final chunk
     const reader = response.body!.getReader();
     const encoder = new TextEncoder();
@@ -291,6 +298,11 @@ serve(async (req) => {
         if (done) {
           controller.close();
           
+          // Determinar origem do custo
+          const parsedCostCredits = gatewayCostCredits ? parseFloat(gatewayCostCredits) : null;
+          const parsedCostBrl = gatewayCostBrl ? parseFloat(gatewayCostBrl) : null;
+          const hasRealCost = parsedCostCredits !== null && !isNaN(parsedCostCredits);
+
           // Log usage after stream completes (fire-and-forget)
           supabase.from('ai_usage_logs').insert({
             conversation_id: conversationId || null,
@@ -301,9 +313,13 @@ serve(async (req) => {
             prompt_tokens: usageData?.prompt_tokens || null,
             completion_tokens: usageData?.completion_tokens || null,
             total_tokens: usageData?.total_tokens || null,
+            gateway_run_id: gatewayRunId || null,
+            cost_credits: hasRealCost ? parsedCostCredits : null,
+            cost_brl: parsedCostBrl && !isNaN(parsedCostBrl) ? parsedCostBrl : null,
+            cost_source: hasRealCost ? 'gateway' : 'estimated',
           }).then(({ error: logError }: any) => {
             if (logError) console.error('Erro ao registrar uso de IA:', logError);
-            else if (usageData) console.log(`Token usage logged: prompt=${usageData.prompt_tokens}, completion=${usageData.completion_tokens}, total=${usageData.total_tokens}`);
+            else if (usageData) console.log(`Token usage logged: prompt=${usageData.prompt_tokens}, completion=${usageData.completion_tokens}, total=${usageData.total_tokens}, run_id=${gatewayRunId}, cost_credits=${parsedCostCredits}`);
           });
           
           return;
