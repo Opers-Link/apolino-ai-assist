@@ -699,6 +699,12 @@ const Admin = () => {
             </div>
 
             {/* Seção de Insights - usando props memoizadas para evitar re-renders */}
+            <AiCostPanel
+              summary={aiCost}
+              totalConversations={stats.totalConversations}
+              totalRequests={stats.aiRequests}
+            />
+
             <InsightsPanel dateFilter={memoizedDateFilter} metrics={memoizedMetrics} />
     </div>
   );
