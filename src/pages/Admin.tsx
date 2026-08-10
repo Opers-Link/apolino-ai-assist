@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 import { isWithinInterval } from 'date-fns';
+import { AiCostPanel } from '@/components/admin/AiCostPanel';
+import { AiCostSummary, computeAiCost } from '@/lib/aiPricing';
 
 interface Conversation {
   id: string;
@@ -86,6 +88,16 @@ const Admin = () => {
   });
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [tagStats, setTagStats] = useState<TagStats[]>([]);
+  const [aiCost, setAiCost] = useState<AiCostSummary>({
+    totalCostUsd: 0,
+    totalCostBrl: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    requestsWithUsage: 0,
+    requestsWithoutUsage: 0,
+    byModel: [],
+  });
   const [loading, setLoading] = useState(true);
   const [agentNotes, setAgentNotes] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
@@ -226,6 +238,26 @@ const Admin = () => {
         avgAiRequestsPerConversation:
           convTotal > 0 ? Math.round(((aiRequestsCount || 0) / convTotal) * 10) / 10 : 0,
       });
+
+      // Custo de IA: somar tokens por modelo (paginado)
+      const usageRows: { model: string | null; prompt_tokens: number | null; completion_tokens: number | null }[] = [];
+      {
+        let usageFrom = 0;
+        while (true) {
+          let uq = supabase.from('ai_usage_logs').select('model, prompt_tokens, completion_tokens');
+          if (startDate && endDate) {
+            uq = uq
+              .gte('created_at', startDate.toISOString())
+              .lte('created_at', endDate.toISOString());
+          }
+          const { data, error } = await uq.range(usageFrom, usageFrom + 999);
+          if (error) throw error;
+          usageRows.push(...((data as any[]) || []));
+          if (!data || data.length < 1000) break;
+          usageFrom += 1000;
+        }
+      }
+      setAiCost(computeAiCost(usageRows));
 
       // Categorias e tags: buscar apenas colunas necessárias, paginando
       const pageSize = 1000;
@@ -667,6 +699,12 @@ const Admin = () => {
             </div>
 
             {/* Seção de Insights - usando props memoizadas para evitar re-renders */}
+            <AiCostPanel
+              summary={aiCost}
+              totalConversations={stats.totalConversations}
+              totalRequests={stats.aiRequests}
+            />
+
             <InsightsPanel dateFilter={memoizedDateFilter} metrics={memoizedMetrics} />
     </div>
   );
