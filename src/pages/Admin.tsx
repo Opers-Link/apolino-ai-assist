@@ -239,6 +239,26 @@ const Admin = () => {
           convTotal > 0 ? Math.round(((aiRequestsCount || 0) / convTotal) * 10) / 10 : 0,
       });
 
+      // Custo de IA: somar tokens por modelo (paginado)
+      const usageRows: { model: string | null; prompt_tokens: number | null; completion_tokens: number | null }[] = [];
+      {
+        let usageFrom = 0;
+        while (true) {
+          let uq = supabase.from('ai_usage_logs').select('model, prompt_tokens, completion_tokens');
+          if (startDate && endDate) {
+            uq = uq
+              .gte('created_at', startDate.toISOString())
+              .lte('created_at', endDate.toISOString());
+          }
+          const { data, error } = await uq.range(usageFrom, usageFrom + 999);
+          if (error) throw error;
+          usageRows.push(...((data as any[]) || []));
+          if (!data || data.length < 1000) break;
+          usageFrom += 1000;
+        }
+      }
+      setAiCost(computeAiCost(usageRows));
+
       // Categorias e tags: buscar apenas colunas necessárias, paginando
       const pageSize = 1000;
       let from = 0;
