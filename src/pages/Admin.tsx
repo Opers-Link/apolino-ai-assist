@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 import { isWithinInterval } from 'date-fns';
+import { AiCostPanel } from '@/components/admin/AiCostPanel';
+import { AiCostSummary, computeAiCost } from '@/lib/aiPricing';
 
 interface Conversation {
   id: string;
