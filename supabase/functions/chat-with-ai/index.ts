@@ -280,9 +280,10 @@ serve(async (req) => {
 
     // Capturar headers do gateway para rastreamento de custo real
     const gatewayRunId = response.headers.get('X-Lovable-AIG-Run-ID');
+    const gatewayLogId = response.headers.get('X-Lovable-AIG-Log-ID');
     const gatewayCostCredits = response.headers.get('X-Lovable-AIG-Cost-Credits');
     const gatewayCostBrl = response.headers.get('X-Lovable-AIG-Cost-BRL');
-    console.log('Gateway headers:', { gatewayRunId, gatewayCostCredits, gatewayCostBrl });
+    console.log('Gateway headers:', { gatewayRunId, gatewayLogId, gatewayCostCredits, gatewayCostBrl });
 
     // Intercept stream to extract usage data from the final chunk
     const reader = response.body!.getReader();
