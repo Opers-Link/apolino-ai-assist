@@ -24,6 +24,8 @@ import {
   Layers,
   Settings2,
   RefreshCw,
+  Search,
+  X,
   Loader2
 } from 'lucide-react';
 import {
