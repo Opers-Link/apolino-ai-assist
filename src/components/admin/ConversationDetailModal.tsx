@@ -24,6 +24,7 @@ interface Message {
 interface Conversation {
   id: string;
   session_id: string;
+  external_user_id?: string | null;
   started_at: string;
   ended_at?: string;
   status: string;
