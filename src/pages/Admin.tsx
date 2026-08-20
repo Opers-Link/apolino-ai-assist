@@ -912,6 +912,11 @@ const Admin = () => {
                           Iniciada em {formatDateTime(selectedConversation.started_at)}
                         </CardDescription>
                       )}
+                      {selectedConversation?.external_user_id && (
+                        <Badge className="mt-2 bg-apolar-gold/20 text-apolar-gold-alt border border-apolar-gold/40 hover:bg-apolar-gold/30">
+                          ID usuário: {selectedConversation.external_user_id}
+                        </Badge>
+                      )}
                     </div>
                     
                     {/* Botões de ação para agentes */}
