@@ -134,6 +134,17 @@ const Admin = () => {
     stats.avgAiRequestsPerConversation
   ]);
 
+  // Filtro de busca por ID de usuário externo ou sessão
+  const filteredConversations = useMemo(() => {
+    const term = conversationSearch.trim().toLowerCase();
+    if (!term) return conversations;
+    return conversations.filter((c) =>
+      (c.external_user_id || '').toLowerCase().includes(term) ||
+      (c.session_id || '').toLowerCase().includes(term)
+    );
+  }, [conversations, conversationSearch]);
+
+
   useEffect(() => {
     loadCurrentUser();
     loadStats(dateFilter.startDate, dateFilter.endDate);
