@@ -121,7 +121,76 @@ export const KnowledgeModulesManager: React.FC = () => {
   const [globalVersion, setGlobalVersion] = useState('1.0');
   const [moduleIndex, setModuleIndex] = useState('');
   const [extractingFiles, setExtractingFiles] = useState<Set<string>>(new Set());
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  // Busca de conteúdo dentro do texto extraído de todos os arquivos
+  const searchResults = useMemo<SearchHit[] | null>(() => {
+    const term = searchTerm.trim();
+    if (term.length < 2) return null;
+
+    const needle = normalizeForSearch(term);
+    const hits: SearchHit[] = [];
+
+    for (const module of modules) {
+      for (const file of module.files || []) {
+        const raw = file.extracted_text || '';
+        if (!raw) continue;
+
+        const haystack = normalizeForSearch(raw);
+        let index = haystack.indexOf(needle);
+        if (index === -1) continue;
+
+        let occurrences = 0;
+        const snippets: SearchSnippet[] = [];
+
+        while (index !== -1) {
+          occurrences++;
+          if (snippets.length < 3) {
+            const start = Math.max(0, index - 100);
+            const end = Math.min(raw.length, index + needle.length + 100);
+            snippets.push({
+              before: (start > 0 ? '…' : '') + raw.slice(start, index),
+              match: raw.slice(index, index + needle.length),
+              after: raw.slice(index + needle.length, end) + (end < raw.length ? '…' : ''),
+            });
+          }
+          index = haystack.indexOf(needle, index + needle.length);
+        }
+
+        hits.push({
+          moduleId: module.id,
+          moduleName: module.name,
+          variableName: module.variable_name,
+          fileId: file.id,
+          fileName: file.file_name,
+          occurrences,
+          snippets,
+        });
+      }
+    }
+
+    return hits.sort((a, b) => b.occurrences - a.occurrences);
+  }, [modules, searchTerm]);
+
+  const unsearchableFiles = useMemo(() => {
+    return modules.flatMap((m) =>
+      (m.files || [])
+        .filter((f) => !f.extracted_text)
+        .map((f) => ({ moduleName: m.name, fileName: f.file_name }))
+    );
+  }, [modules]);
+
+  const scrollToModule = (moduleId: string) => {
+    const el = document.getElementById(`module-${moduleId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-apolar-gold');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-apolar-gold'), 2500);
+    }
+  };
+
 
   const retryExtraction = async (fileId: string, filePath: string, fileName: string) => {
     setExtractingFiles(prev => new Set(prev).add(fileId));
