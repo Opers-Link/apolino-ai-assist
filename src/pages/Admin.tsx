@@ -17,6 +17,7 @@ import { PromptEditor } from '@/components/admin/PromptEditor';
 import { KnowledgeModulesManager } from '@/components/admin/KnowledgeModulesManager';
 import { RefinementsManager } from '@/components/admin/RefinementsManager';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,7 @@ import { AiCostSummary, computeAiCost } from '@/lib/aiPricing';
 interface Conversation {
   id: string;
   session_id: string;
+  external_user_id?: string | null;
   started_at: string;
   ended_at?: string;
   status: string;
@@ -102,6 +104,7 @@ const Admin = () => {
     byModel: [],
   });
   const [loading, setLoading] = useState(true);
+  const [conversationSearch, setConversationSearch] = useState('');
   const [agentNotes, setAgentNotes] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -131,6 +134,17 @@ const Admin = () => {
     stats.aiRequests,
     stats.avgAiRequestsPerConversation
   ]);
+
+  // Filtro de busca por ID de usuário externo ou sessão
+  const filteredConversations = useMemo(() => {
+    const term = conversationSearch.trim().toLowerCase();
+    if (!term) return conversations;
+    return conversations.filter((c) =>
+      (c.external_user_id || '').toLowerCase().includes(term) ||
+      (c.session_id || '').toLowerCase().includes(term)
+    );
+  }, [conversations, conversationSearch]);
+
 
   useEffect(() => {
     loadCurrentUser();
@@ -796,10 +810,21 @@ const Admin = () => {
                   <CardDescription>
                     Clique em uma conversa para ver as mensagens
                   </CardDescription>
+                  <Input
+                    value={conversationSearch}
+                    onChange={(e) => setConversationSearch(e.target.value)}
+                    placeholder="Buscar por ID do usuário ou sessão..."
+                    className="mt-3 bg-white/70 border-apolar-blue/20"
+                  />
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[600px]">
-                    {conversations.map((conversation, index) => (
+                    {filteredConversations.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-6 text-center">
+                        Nenhuma conversa encontrada.
+                      </p>
+                    )}
+                    {filteredConversations.map((conversation, index) => (
                       <div key={conversation.id}>
                         <div 
                           className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
@@ -811,6 +836,11 @@ const Admin = () => {
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div>
+                              {conversation.external_user_id && (
+                                <Badge className="mb-1 bg-apolar-gold/20 text-apolar-gold-alt border border-apolar-gold/40 hover:bg-apolar-gold/30">
+                                  ID usuário: {conversation.external_user_id}
+                                </Badge>
+                              )}
                               <p className="font-medium text-sm text-apolar-blue">
                                 Sessão: {conversation.session_id.slice(0, 12)}...
                               </p>
@@ -881,6 +911,11 @@ const Admin = () => {
                         <CardDescription>
                           Iniciada em {formatDateTime(selectedConversation.started_at)}
                         </CardDescription>
+                      )}
+                      {selectedConversation?.external_user_id && (
+                        <Badge className="mt-2 bg-apolar-gold/20 text-apolar-gold-alt border border-apolar-gold/40 hover:bg-apolar-gold/30">
+                          ID usuário: {selectedConversation.external_user_id}
+                        </Badge>
                       )}
                     </div>
                     

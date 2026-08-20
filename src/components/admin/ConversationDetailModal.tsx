@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, User, Bot, Clock, MessageSquare, CheckCircle, X, FileText, Save } from 'lucide-react';
+import { Send, User, Bot, Clock, MessageSquare, CheckCircle, X, FileText, Save, Copy } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +24,7 @@ interface Message {
 interface Conversation {
   id: string;
   session_id: string;
+  external_user_id?: string | null;
   started_at: string;
   ended_at?: string;
   status: string;
@@ -388,7 +389,7 @@ export function ConversationDetailModal({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle>Atendimento #{conversation.session_id.slice(0, 8)}</DialogTitle>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant={conversation.status === 'active' ? 'default' : 'secondary'}>
                   {conversation.status}
                 </Badge>
@@ -396,6 +397,19 @@ export function ConversationDetailModal({
                   <Badge variant="outline">{conversation.category}</Badge>
                 )}
                 {aiEnabled && <Badge variant="secondary">IA Ativa</Badge>}
+                {conversation.external_user_id && (
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer gap-1 border-apolar-gold/40 bg-apolar-gold/15 text-apolar-gold-alt hover:bg-apolar-gold/25"
+                    onClick={() => {
+                      navigator.clipboard.writeText(conversation.external_user_id!);
+                      toast({ title: 'ID copiado', description: conversation.external_user_id! });
+                    }}
+                  >
+                    ID usuário: {conversation.external_user_id}
+                    <Copy className="h-3 w-3" />
+                  </Badge>
+                )}
               </div>
             </div>
             
