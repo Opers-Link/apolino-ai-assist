@@ -103,6 +103,7 @@ const Admin = () => {
     byModel: [],
   });
   const [loading, setLoading] = useState(true);
+  const [conversationSearch, setConversationSearch] = useState('');
   const [agentNotes, setAgentNotes] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [currentUser, setCurrentUser] = useState<any>(null);
