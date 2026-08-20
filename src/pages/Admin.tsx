@@ -17,6 +17,7 @@ import { PromptEditor } from '@/components/admin/PromptEditor';
 import { KnowledgeModulesManager } from '@/components/admin/KnowledgeModulesManager';
 import { RefinementsManager } from '@/components/admin/RefinementsManager';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
