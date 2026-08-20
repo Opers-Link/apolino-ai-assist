@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,8 @@ import {
   Layers,
   Settings2,
   RefreshCw,
+  Search,
+  X,
   Loader2
 } from 'lucide-react';
 import {
@@ -87,6 +89,26 @@ const sanitizeFileName = (fileName: string): string => {
     .replace(/^_+|_+$/g, '');        // Remove underscores início/fim
 };
 
+// Normaliza texto para busca (sem acentos, minúsculo)
+const normalizeForSearch = (text: string): string =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+interface SearchSnippet {
+  before: string;
+  match: string;
+  after: string;
+}
+
+interface SearchHit {
+  moduleId: string;
+  moduleName: string;
+  variableName: string;
+  fileId: string;
+  fileName: string;
+  occurrences: number;
+  snippets: SearchSnippet[];
+}
+
 export const KnowledgeModulesManager: React.FC = () => {
   const [modules, setModules] = useState<KnowledgeModule[]>([]);
   const [config, setConfig] = useState<Record<string, KnowledgeConfig>>({});
@@ -99,7 +121,76 @@ export const KnowledgeModulesManager: React.FC = () => {
   const [globalVersion, setGlobalVersion] = useState('1.0');
   const [moduleIndex, setModuleIndex] = useState('');
   const [extractingFiles, setExtractingFiles] = useState<Set<string>>(new Set());
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  // Busca de conteúdo dentro do texto extraído de todos os arquivos
+  const searchResults = useMemo<SearchHit[] | null>(() => {
+    const term = searchTerm.trim();
+    if (term.length < 2) return null;
+
+    const needle = normalizeForSearch(term);
+    const hits: SearchHit[] = [];
+
+    for (const module of modules) {
+      for (const file of module.files || []) {
+        const raw = file.extracted_text || '';
+        if (!raw) continue;
+
+        const haystack = normalizeForSearch(raw);
+        let index = haystack.indexOf(needle);
+        if (index === -1) continue;
+
+        let occurrences = 0;
+        const snippets: SearchSnippet[] = [];
+
+        while (index !== -1) {
+          occurrences++;
+          if (snippets.length < 3) {
+            const start = Math.max(0, index - 100);
+            const end = Math.min(raw.length, index + needle.length + 100);
+            snippets.push({
+              before: (start > 0 ? '…' : '') + raw.slice(start, index),
+              match: raw.slice(index, index + needle.length),
+              after: raw.slice(index + needle.length, end) + (end < raw.length ? '…' : ''),
+            });
+          }
+          index = haystack.indexOf(needle, index + needle.length);
+        }
+
+        hits.push({
+          moduleId: module.id,
+          moduleName: module.name,
+          variableName: module.variable_name,
+          fileId: file.id,
+          fileName: file.file_name,
+          occurrences,
+          snippets,
+        });
+      }
+    }
+
+    return hits.sort((a, b) => b.occurrences - a.occurrences);
+  }, [modules, searchTerm]);
+
+  const unsearchableFiles = useMemo(() => {
+    return modules.flatMap((m) =>
+      (m.files || [])
+        .filter((f) => !f.extracted_text)
+        .map((f) => ({ moduleName: m.name, fileName: f.file_name }))
+    );
+  }, [modules]);
+
+  const scrollToModule = (moduleId: string) => {
+    const el = document.getElementById(`module-${moduleId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-apolar-gold');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-apolar-gold'), 2500);
+    }
+  };
+
 
   const retryExtraction = async (fileId: string, filePath: string, fileName: string) => {
     setExtractingFiles(prev => new Set(prev).add(fileId));
@@ -602,6 +693,136 @@ export const KnowledgeModulesManager: React.FC = () => {
         </Dialog>
       </div>
 
+      {/* Busca de conteúdo nos manuais */}
+      <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-apolar-blue" />
+            <CardTitle className="text-base">Buscar conteúdo nos manuais</CardTitle>
+          </div>
+          <CardDescription>
+            Descubra em qual manual/arquivo uma informação está registrada
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setSearchTerm(searchInput);
+              }}
+              placeholder="Ex.: reserva de imóvel, entrega de chaves, comissão..."
+              className="bg-white/70"
+            />
+            <Button
+              onClick={() => setSearchTerm(searchInput)}
+              className="bg-apolar-blue hover:bg-apolar-blue-dark"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Buscar nos manuais
+            </Button>
+            {searchTerm && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                }}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Limpar
+              </Button>
+            )}
+          </div>
+
+          {searchTerm.trim().length > 0 && searchTerm.trim().length < 2 && (
+            <p className="text-sm text-muted-foreground">Digite ao menos 2 caracteres.</p>
+          )}
+
+          {searchResults && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="outline" className="bg-apolar-blue/10 text-apolar-blue border-apolar-blue/30">
+                  {searchResults.length} arquivo(s) encontrado(s)
+                </Badge>
+                {searchResults.length > 0 && (
+                  <span>
+                    em {new Set(searchResults.map((r) => r.moduleId)).size} manual(is)
+                  </span>
+                )}
+              </div>
+
+              {searchResults.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma ocorrência de "{searchTerm}" encontrada no texto extraído dos manuais.
+                </p>
+              )}
+
+              {searchResults.map((hit) => (
+                <div
+                  key={hit.fileId}
+                  className="rounded-lg border border-slate-200 bg-white/80 p-3 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <BookOpen className="h-4 w-4 text-apolar-gold-alt" />
+                        <span className="font-semibold text-sm">{hit.moduleName}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {hit.occurrences} ocorrência(s)
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <FileText className="h-3 w-3" />
+                        {hit.fileName}
+                        <code className="bg-slate-100 px-1.5 py-0.5 rounded text-apolar-blue">
+                          {`{{${hit.variableName}}}`}
+                        </code>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => scrollToModule(hit.moduleId)}
+                      className="shrink-0"
+                    >
+                      Ver módulo
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {hit.snippets.map((s, i) => (
+                      <p key={i} className="text-xs leading-relaxed text-slate-600 bg-slate-50 rounded p-2">
+                        {s.before}
+                        <mark className="bg-apolar-gold/50 text-apolar-blue font-semibold rounded px-0.5">
+                          {s.match}
+                        </mark>
+                        {s.after}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {unsearchableFiles.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+                    <AlertCircle className="h-4 w-4" />
+                    {unsearchableFiles.length} arquivo(s) sem texto extraído (não pesquisáveis)
+                  </div>
+                  <ul className="mt-1 text-xs text-amber-700 list-disc list-inside">
+                    {unsearchableFiles.slice(0, 5).map((f, i) => (
+                      <li key={i}>{f.moduleName} — {f.fileName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Versão Geral */}
       <Card className="bg-white/60 backdrop-blur-sm border-apolar-gold/20">
         <CardHeader className="pb-3">
@@ -685,7 +906,8 @@ export const KnowledgeModulesManager: React.FC = () => {
             {modules.map((module, index) => (
               <Card 
                 key={module.id} 
-                className="bg-white/80 backdrop-blur-sm border-slate-200 hover:border-apolar-gold/30 transition-colors"
+                id={`module-${module.id}`}
+                className="bg-white/80 backdrop-blur-sm border-slate-200 hover:border-apolar-gold/30 transition-all"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
