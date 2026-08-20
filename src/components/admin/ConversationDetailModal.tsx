@@ -389,7 +389,7 @@ export function ConversationDetailModal({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle>Atendimento #{conversation.session_id.slice(0, 8)}</DialogTitle>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant={conversation.status === 'active' ? 'default' : 'secondary'}>
                   {conversation.status}
                 </Badge>
@@ -397,6 +397,19 @@ export function ConversationDetailModal({
                   <Badge variant="outline">{conversation.category}</Badge>
                 )}
                 {aiEnabled && <Badge variant="secondary">IA Ativa</Badge>}
+                {conversation.external_user_id && (
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer gap-1 border-apolar-gold/40 bg-apolar-gold/15 text-apolar-gold-alt hover:bg-apolar-gold/25"
+                    onClick={() => {
+                      navigator.clipboard.writeText(conversation.external_user_id!);
+                      toast({ title: 'ID copiado', description: conversation.external_user_id! });
+                    }}
+                  >
+                    ID usuário: {conversation.external_user_id}
+                    <Copy className="h-3 w-3" />
+                  </Badge>
+                )}
               </div>
             </div>
             
