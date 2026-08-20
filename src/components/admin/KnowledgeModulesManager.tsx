@@ -776,7 +776,8 @@ export const KnowledgeModulesManager: React.FC = () => {
             {modules.map((module, index) => (
               <Card 
                 key={module.id} 
-                className="bg-white/80 backdrop-blur-sm border-slate-200 hover:border-apolar-gold/30 transition-colors"
+                id={`module-${module.id}`}
+                className="bg-white/80 backdrop-blur-sm border-slate-200 hover:border-apolar-gold/30 transition-all"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
