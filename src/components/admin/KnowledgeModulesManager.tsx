@@ -693,6 +693,136 @@ export const KnowledgeModulesManager: React.FC = () => {
         </Dialog>
       </div>
 
+      {/* Busca de conteúdo nos manuais */}
+      <Card className="bg-white/60 backdrop-blur-sm border-apolar-blue/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-apolar-blue" />
+            <CardTitle className="text-base">Buscar conteúdo nos manuais</CardTitle>
+          </div>
+          <CardDescription>
+            Descubra em qual manual/arquivo uma informação está registrada
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setSearchTerm(searchInput);
+              }}
+              placeholder="Ex.: reserva de imóvel, entrega de chaves, comissão..."
+              className="bg-white/70"
+            />
+            <Button
+              onClick={() => setSearchTerm(searchInput)}
+              className="bg-apolar-blue hover:bg-apolar-blue-dark"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Buscar nos manuais
+            </Button>
+            {searchTerm && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                }}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Limpar
+              </Button>
+            )}
+          </div>
+
+          {searchTerm.trim().length > 0 && searchTerm.trim().length < 2 && (
+            <p className="text-sm text-muted-foreground">Digite ao menos 2 caracteres.</p>
+          )}
+
+          {searchResults && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="outline" className="bg-apolar-blue/10 text-apolar-blue border-apolar-blue/30">
+                  {searchResults.length} arquivo(s) encontrado(s)
+                </Badge>
+                {searchResults.length > 0 && (
+                  <span>
+                    em {new Set(searchResults.map((r) => r.moduleId)).size} manual(is)
+                  </span>
+                )}
+              </div>
+
+              {searchResults.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma ocorrência de "{searchTerm}" encontrada no texto extraído dos manuais.
+                </p>
+              )}
+
+              {searchResults.map((hit) => (
+                <div
+                  key={hit.fileId}
+                  className="rounded-lg border border-slate-200 bg-white/80 p-3 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <BookOpen className="h-4 w-4 text-apolar-gold-alt" />
+                        <span className="font-semibold text-sm">{hit.moduleName}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {hit.occurrences} ocorrência(s)
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <FileText className="h-3 w-3" />
+                        {hit.fileName}
+                        <code className="bg-slate-100 px-1.5 py-0.5 rounded text-apolar-blue">
+                          {`{{${hit.variableName}}}`}
+                        </code>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => scrollToModule(hit.moduleId)}
+                      className="shrink-0"
+                    >
+                      Ver módulo
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {hit.snippets.map((s, i) => (
+                      <p key={i} className="text-xs leading-relaxed text-slate-600 bg-slate-50 rounded p-2">
+                        {s.before}
+                        <mark className="bg-apolar-gold/50 text-apolar-blue font-semibold rounded px-0.5">
+                          {s.match}
+                        </mark>
+                        {s.after}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {unsearchableFiles.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+                    <AlertCircle className="h-4 w-4" />
+                    {unsearchableFiles.length} arquivo(s) sem texto extraído (não pesquisáveis)
+                  </div>
+                  <ul className="mt-1 text-xs text-amber-700 list-disc list-inside">
+                    {unsearchableFiles.slice(0, 5).map((f, i) => (
+                      <li key={i}>{f.moduleName} — {f.fileName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Versão Geral */}
       <Card className="bg-white/60 backdrop-blur-sm border-apolar-gold/20">
         <CardHeader className="pb-3">
