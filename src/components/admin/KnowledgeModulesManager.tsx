@@ -89,6 +89,26 @@ const sanitizeFileName = (fileName: string): string => {
     .replace(/^_+|_+$/g, '');        // Remove underscores início/fim
 };
 
+// Normaliza texto para busca (sem acentos, minúsculo)
+const normalizeForSearch = (text: string): string =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+interface SearchSnippet {
+  before: string;
+  match: string;
+  after: string;
+}
+
+interface SearchHit {
+  moduleId: string;
+  moduleName: string;
+  variableName: string;
+  fileId: string;
+  fileName: string;
+  occurrences: number;
+  snippets: SearchSnippet[];
+}
+
 export const KnowledgeModulesManager: React.FC = () => {
   const [modules, setModules] = useState<KnowledgeModule[]>([]);
   const [config, setConfig] = useState<Record<string, KnowledgeConfig>>({});
