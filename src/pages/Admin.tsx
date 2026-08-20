@@ -809,10 +809,21 @@ const Admin = () => {
                   <CardDescription>
                     Clique em uma conversa para ver as mensagens
                   </CardDescription>
+                  <Input
+                    value={conversationSearch}
+                    onChange={(e) => setConversationSearch(e.target.value)}
+                    placeholder="Buscar por ID do usuário ou sessão..."
+                    className="mt-3 bg-white/70 border-apolar-blue/20"
+                  />
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[600px]">
-                    {conversations.map((conversation, index) => (
+                    {filteredConversations.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-6 text-center">
+                        Nenhuma conversa encontrada.
+                      </p>
+                    )}
+                    {filteredConversations.map((conversation, index) => (
                       <div key={conversation.id}>
                         <div 
                           className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
@@ -824,6 +835,11 @@ const Admin = () => {
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div>
+                              {conversation.external_user_id && (
+                                <Badge className="mb-1 bg-apolar-gold/20 text-apolar-gold-alt border border-apolar-gold/40 hover:bg-apolar-gold/30">
+                                  ID usuário: {conversation.external_user_id}
+                                </Badge>
+                              )}
                               <p className="font-medium text-sm text-apolar-blue">
                                 Sessão: {conversation.session_id.slice(0, 12)}...
                               </p>
