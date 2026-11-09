@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 import { isWithinInterval } from 'date-fns';
 import { AiCostPanel } from '@/components/admin/AiCostPanel';
+import { KnowledgeGapsPanel } from '@/components/admin/KnowledgeGapsPanel';
 import { AiCostSummary, computeAiCost } from '@/lib/aiPricing';
 
 interface Conversation {
@@ -729,6 +730,14 @@ const Admin = () => {
               summary={aiCost}
               totalConversations={stats.totalConversations}
               totalRequests={stats.aiRequests}
+            />
+
+            <KnowledgeGapsPanel
+              dateFilter={memoizedDateFilter}
+              onOpenConversation={async (id) => {
+                const { data } = await supabase.from('chat_conversations').select('*').eq('id', id).maybeSingle();
+                if (data) selectConversationInKanban(data as any);
+              }}
             />
 
             <InsightsPanel dateFilter={memoizedDateFilter} metrics={memoizedMetrics} />
