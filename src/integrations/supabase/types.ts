@@ -388,6 +388,39 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_gap_reports: {
+        Row: {
+          conversation_count: number
+          created_at: string
+          flagged_count: number
+          generated_by: string | null
+          id: string
+          period_end: string
+          period_start: string
+          report_data: Json
+        }
+        Insert: {
+          conversation_count?: number
+          created_at?: string
+          flagged_count?: number
+          generated_by?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          report_data?: Json
+        }
+        Update: {
+          conversation_count?: number
+          created_at?: string
+          flagged_count?: number
+          generated_by?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          report_data?: Json
+        }
+        Relationships: []
+      }
       knowledge_module_files: {
         Row: {
           extracted_text: string | null
